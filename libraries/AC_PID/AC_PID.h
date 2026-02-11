@@ -63,6 +63,12 @@ public:
     //  the derivative is then calculated and filtered
     //  the integral is then updated based on the setting of the limit flag
     float update_all(float target, float measurement, float dt, bool limit = false, float boost = 1.0f);
+    
+    //  Shanelle edits - filter the error from targets and measurements
+    float filter_error(float target, float measurement, float dt, bool limit = false);
+
+    //  Shanelle edits - limits on the proportional gain for INDI
+    float limiting_Pout(float P_out);
 
     //  update_error - set error input to PID controller and calculate outputs
     //  target is set to zero and error is set and filtered

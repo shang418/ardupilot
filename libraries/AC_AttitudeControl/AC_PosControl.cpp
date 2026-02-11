@@ -1076,6 +1076,7 @@ void AC_PosControl::update_indi_controller() // this is really the z controller
     }
 }
 
+
 /// update_indi_controller - runs the vertical position controller using INDI correcting position, velocity and acceleration errors.
 ///     Position and velocity errors are converted to velocity and acceleration targets using PID objects
 ///     Desired velocity and accelerations are added to these corrections as they are calculated
@@ -1132,27 +1133,42 @@ void AC_PosControl::update_z_controller() // this is really the indi controller
         _pid_accel_z.set_imax(_motors.get_throttle_hover() * 1000.0f);
     }
     
-    float thr_out;
-    thr_out = _pid_accel_z.update_all(_accel_target.z, z_accel_meas, _dt, (_motors.limit.throttle_lower || _motors.limit.throttle_upper)) * 0.001f;
-        //thr_out += _pid_accel_z.get_ff() * 0.001f;
+    // SHANELLE's EDITS FOR INDI HERE /////
     
     
-    hal.console->printf("\n PID throttle: %.2f \n", thr_out);
-    // this is the currrent rotation matrix 
+    float error = _pid_accel_z.filter_error(_accel_target.z, z_accel_meas, _dt, (_motors.limit.throttle_lower || _motors.limit.throttle_upper));
+  
+    float _kp_z = 0.5f; // replace this later
     Matrix3f _rq_matrix = _ahrs.get_rotation_body_to_ned(); // this is the DCM matrix ...double check
     // this is the quaternion ...check if the same 
     
-    float throttle_increment = _rq_matrix[2][2]*thr_out;
+    // this is the INDI control 
+    float throttle_increment = (error * _kp_z)/_rq_matrix[2][2];
+        // P_out *= _pid_info.Dmod;
+
+    // boost output if required
+     // P_out *= boost; 
+    
+    hal.console->printf("\n gain kp: %.4f\n", _kp_z);
     hal.console->printf("\n Rq: %.2f\n", _rq_matrix[2][2]);
     hal.console->printf("\n Previous motor throttle: %.2f \n ", _motors.get_throttle());
-    hal.console->printf("\n Throttle increment: %.2f \n ", throttle_increment);
+    hal.console->printf("\n Throttle increment: %.4f \n ", throttle_increment);
     
+    //float thr_limit_max = 1000.0; 
+    //float thr_limit_min = -1000.0; 
+    throttle_increment*= (1.0/1000.0);
+    //throttle_increment = 0.0f + (throttle_increment-thr_limit_min)*(1.0)/(thr_limit_max - thr_limit_min);
+    hal.console->printf("\n Limiting Throttle increment: %.4f \n ", throttle_increment);
+    
+    float thr_out;
+
     thr_out = throttle_increment + _motors.get_throttle(); // add throttle increment to current motor output.... check signs here
-    hal.console->printf("\n Total Throttle after increment: %.2f \n", thr_out);
+    
+    hal.console->printf("\n Total Throttle after increment: %.4f \n", thr_out);
 
     thr_out = constrain_float(thr_out, 0.0f, 1.0f); // assume range of throttle from  -1500 to 1500...do linear interpz
 
-    hal.console->printf("\n Total Throttle out: %.6f \n", thr_out);
+    hal.console->printf("\n Final Throttle out: %.6f \n", thr_out);
 
     // Actuator commands
 
