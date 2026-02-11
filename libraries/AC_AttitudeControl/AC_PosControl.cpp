@@ -988,7 +988,7 @@ bool AC_PosControl::is_active_z() const
 ///     Kinematically consistent target position and desired velocity and accelerations should be provided before calling this function
 void AC_PosControl::update_indi_controller() // this is really the z controller
 {
-    hal.console->printf("\n\nRunning the z controller for Altitude\n\n");
+    //hal.console->printf("\n\nRunning the z controller for Altitude\n\n");
     // check for ekf z-axis position reset
     handle_ekf_z_reset();
 
@@ -1044,8 +1044,16 @@ void AC_PosControl::update_indi_controller() // this is really the z controller
         thr_out = _pid_accel_z.update_all(_accel_target.z, z_accel_meas, _dt, (_motors.limit.throttle_lower || _motors.limit.throttle_upper)) * 0.001f;
         thr_out += _pid_accel_z.get_ff() * 0.001f;
     }
-    thr_out += _motors.get_throttle_hover();
+    
+    hal.console->printf("\n PID throttle: %.2f \n", thr_out);
 
+    thr_out += _motors.get_throttle_hover(); 
+
+    hal.console->printf("\n Motor throttle reading: %.2f \n ", _motors.get_throttle());
+    hal.console->printf("\n Motor throttle reading hover: %.2f \n ", _motors.get_throttle_hover());
+    hal.console->printf("\n Total Throttle out: %.2f \n", thr_out);
+
+    
     // Actuator commands
 
     // send throttle to attitude controller with angle boost
@@ -1123,29 +1131,28 @@ void AC_PosControl::update_z_controller() // this is really the indi controller
     if (_motors.get_throttle_hover() * 1000.0f > _pid_accel_z.imax()) {
         _pid_accel_z.set_imax(_motors.get_throttle_hover() * 1000.0f);
     }
+    
     float thr_out;
+    thr_out = _pid_accel_z.update_all(_accel_target.z, z_accel_meas, _dt, (_motors.limit.throttle_lower || _motors.limit.throttle_upper)) * 0.001f;
+        //thr_out += _pid_accel_z.get_ff() * 0.001f;
     
-    thr_out = (_accel_target.z - z_accel_meas) * 0.09275;
-        //thr_out = _pid_accel_z.update_all(_accel_target.z, z_accel_meas, _dt, (_motors.limit.throttle_lower || _motors.limit.throttle_upper)) * 0.001f;
-      //   thr_out += _pid_accel_z.get_ff() * 0.001f; [Shanelle - remove feedforward term]
     
+    hal.console->printf("\n PID throttle: %.2f \n", thr_out);
     // this is the currrent rotation matrix 
     Matrix3f _rq_matrix = _ahrs.get_rotation_body_to_ned(); // this is the DCM matrix ...double check
     // this is the quaternion ...check if the same 
     
     float throttle_increment = _rq_matrix[2][2]*thr_out;
+    hal.console->printf("\n Rq: %.2f\n", _rq_matrix[2][2]);
+    hal.console->printf("\n Previous motor throttle: %.2f \n ", _motors.get_throttle());
+    hal.console->printf("\n Throttle increment: %.2f \n ", throttle_increment);
     
     thr_out = throttle_increment + _motors.get_throttle(); // add throttle increment to current motor output.... check signs here
-    
     hal.console->printf("\n Total Throttle after increment: %.2f \n", thr_out);
 
-    thr_out = 0 + (0.9*(thr_out+1000)/2000); // assume range of throttle from  -1500 to 1500...do linear interpz
+    thr_out = constrain_float(thr_out, 0.0f, 1.0f); // assume range of throttle from  -1500 to 1500...do linear interpz
 
-    hal.console->printf("\n Rq: %.2f\n", _rq_matrix[2][2]);
-
-    hal.console->printf("\n Previous throttle out: %.2f \n ", _motors.get_throttle());
-    hal.console->printf("\n Throttle increment: %.2f \n ", throttle_increment);
-    hal.console->printf("\n Total Throttle out: %.2f \n", thr_out);
+    hal.console->printf("\n Total Throttle out: %.6f \n", thr_out);
 
     // Actuator commands
 
