@@ -1543,6 +1543,7 @@ void AC_PosControl::handle_ekf_z_reset()
         _vel_desired.z = _vel_target.z - (_vel_offset.z + _vel_terrain);
 
         _ekf_z_reset_ms = reset_ms;
+ 
     }
 }
 

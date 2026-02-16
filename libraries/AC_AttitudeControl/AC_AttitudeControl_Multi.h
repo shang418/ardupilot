@@ -5,6 +5,7 @@
 
 #include "AC_AttitudeControl.h"
 #include <AP_Motors/AP_MotorsMulticopter.h>
+#include <Filter/DerivativeFilter.h>
 
 // default rate controller PID gains
 #ifndef AC_ATC_MULTI_RATE_RP_P
@@ -85,9 +86,10 @@ public:
 
     // set the PID notch sample rates
     void set_notch_sample_rate(float sample_rate) override;
-
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
+
+    Vector3f compute_angular_accel(const Vector3f& gyro);
 
 protected:
 
@@ -145,10 +147,44 @@ protected:
         }
     };
 
+    // Angular acceleration inner loop PID controllers
+    AC_PID                _pid_accel_roll{
+        AC_PID::Defaults{
+            .p         = 1.5f,
+            .i         = 0.0f,
+            .d         = 0.0f,
+            .ff        = 0.0f,
+            .imax      = 0.1f,
+            .filt_T_hz = 20.0f,
+            .filt_E_hz = 0.0f,
+            .filt_D_hz = 20.0f,
+            .srmax     = 0,
+            .srtau     = 1.0
+        }
+    };
+    AC_PID                _pid_accel_pitch{
+        AC_PID::Defaults{
+            .p         = 1.5f,
+            .i         = 0.0f,
+            .d         = 0.0f,
+            .ff        = 0.0f,
+            .imax      = 0.1f,
+            .filt_T_hz = 20.0f,
+            .filt_E_hz = 0.0f,
+            .filt_D_hz = 20.0f,
+            .srmax     = 0,
+            .srtau     = 1.0
+        }
+    };
+
     AP_Float              _thr_mix_man;     // throttle vs attitude control prioritisation used when using manual throttle (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_min;     // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_max;     // throttle vs attitude control prioritisation used during active flight (higher values mean we prioritise attitude control over throttle)
 
     // angle_p/pd boost multiplier
     AP_Float              _throttle_gain_boost;
+
+    // Derivative filters for P and Q axes (Holoborodko smooth differentiator)
+    DerivativeFilterFloat_Size5 _deriv_filter_x;
+    DerivativeFilterFloat_Size5 _deriv_filter_y;
 };

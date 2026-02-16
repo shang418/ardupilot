@@ -4,6 +4,7 @@
 #include <AC_PID/AC_PID.h>
 #include <AP_Scheduler/AP_Scheduler.h>
 
+extern const AP_HAL::HAL& hal;
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // parameters from parent vehicle
@@ -439,7 +440,7 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
     _throttle_rpy_mix = constrain_float(_throttle_rpy_mix, 0.1f, AC_ATTITUDE_CONTROL_MAX);
 }
 
-void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, float dt)
+/* void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, float dt)
 {
     // take a copy of the target so that it can't be changed from under us.
     Vector3f ang_vel_body = _ang_vel_body;
@@ -468,6 +469,109 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
 
     control_monitor_update();
 }
+ */
+
+ Vector3f AC_AttitudeControl_Multi::compute_angular_accel(const Vector3f& gyro)
+{
+    uint32_t now_us = AP_HAL::micros64();
+
+    // Update derivative filters with current gyro rate (X and Y only)
+    _deriv_filter_x.update(gyro.x, now_us);
+    _deriv_filter_y.update(gyro.y, now_us);
+
+    // Get smoothed derivatives (rad/s^2) - Z is unused
+    Vector3f angular_accel;
+    angular_accel.x = _deriv_filter_x.slope();
+    angular_accel.y = _deriv_filter_y.slope();
+    angular_accel.z = 0.0f;
+
+    return angular_accel;
+}
+
+
+// this is the INDI controller for rotational dynamics
+void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, float dt)
+{
+    hal.console->printf("\n\nRunning the indi controller for attitude\n\n");
+
+    // take a copy of the target so that it can't be changed from under us.
+    Vector3f ang_vel_body = _ang_vel_body;
+
+    // boost angle_p/pd each cycle on high throttle slew
+    update_throttle_gain_boost();
+
+    // move throttle vs attitude mixing towards desired (called from here because this is conveniently called on every iteration)
+    update_throttle_rpy_mix();
+
+    ang_vel_body += _sysid_ang_vel_body;
+
+    _rate_gyro = gyro;
+    _rate_gyro_time_us = AP_HAL::micros64();
+
+    // Run outer loop rate PIDs
+    float roll_out = get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt, _motors.limit.roll, _pd_scale.x);
+    float pitch_out = get_rate_pitch_pid().update_all(ang_vel_body.y, gyro.y,  dt, _motors.limit.pitch, _pd_scale.y) ;
+    float yaw_out = get_rate_yaw_pid().update_all(ang_vel_body.z, gyro.z,  dt, _motors.limit.yaw, _pd_scale.z) + _actuator_sysid.z;
+    
+    hal.console->printf("\n PID accel targets: %.2f,%.2f,%.2f \n", roll_out, pitch_out,yaw_out);
+
+    //////Shanelle's edits here //////
+    
+    // Store outer loop outputs as acceleration targets (approximation: command is proportional to acceleration)
+    float _accel_roll_target = roll_out;
+    float _accel_pitch_target = pitch_out;
+
+    // get acceleration measurements here from IMU derivative filter 
+    Vector3f _accel_meas = compute_angular_accel(_rate_gyro);
+
+    hal.console->printf("\n Deriv Filtered Acceleration from IMU [roll, pitch]: [%.3f,%.3f] \n ", _accel_meas.x,_accel_meas.y);
+
+    //float _accel_roll_error = _pid_accel_roll.filter_error(_accel_roll_target, _accel_meas.x, dt, _motors.limit.roll);
+    //float _accel_pitch_error = _pid_accel_pitch.filter_error(_accel_pitch_target, _accel_meas.y, dt, _motors.limit.pitch);
+    // Run inner loop PIDs: compare measured angular acceleration to target
+    // Note: angular acceleration is in rad/s^2, we scale it to match the command range
+    //float _accel_roll_increment = _pid_accel_roll.update_all(_accel_roll_target, _accel_meas.x, dt, _motors.limit.roll, _pd_scale.x);
+    //float _accel_pitch_increment = _pid_accel_pitch.update_all(_accel_pitch_target, _accel_meas.y, dt, _motors.limit.pitch, _pd_scale.y);
+
+    // this is the INDI control 
+    float _kp_roll = 0.5f; //  = 0.1* inv(0.016) replace this later
+    float _kp_pitch = 0.5f; // replace this later
+    //float _accel_roll_increment = (_accel_roll_error * _kp_roll);
+    // this is the INDI control 
+    //float _accel_pitch_increment = (_accel_pitch_error * _kp_pitch);
+
+    //hal.console->printf("\n Output Torque Increments [roll, pitch]: [%.3f,%.3f] \n ", _accel_roll_increment,_accel_pitch_increment);
+
+
+        // Add accel inner loop correction to previous time step's total output
+        // This allows the accel feedback to directly adjust the control command
+    roll_out =_pid_accel_roll.update_total(_motors.get_roll(),_accel_roll_target, _accel_meas.x, dt, _kp_roll,_motors.limit.roll, _pd_scale.x); // leak guard lambda = 0.001
+    pitch_out = _pid_accel_pitch.update_total(_motors.get_pitch(),_accel_pitch_target, _accel_meas.y, dt,_kp_pitch, _motors.limit.pitch, _pd_scale.y);
+
+    hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+    
+    //roll_out*=(1.0/3.14);
+    //pitch_out*=(1.0/3.14);
+    roll_out = constrain_float(roll_out, -1.0f, 1.0f);
+    pitch_out = constrain_float(pitch_out, -1.0f, 1.0f);
+   
+    hal.console->printf("\n Final Output Torques [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+
+    // Set motor outputs
+    _motors.set_roll(roll_out);
+    
+
+    _motors.set_pitch(pitch_out);
+
+
+    _motors.set_yaw(yaw_out);
+
+    _pd_scale_used = _pd_scale;
+
+
+    control_monitor_update();
+}
+
 
 // reset the rate controller target loop updates
 void AC_AttitudeControl_Multi::rate_controller_target_reset()
