@@ -550,8 +550,8 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
 
     hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
     
-    //roll_out*=(1.0/3.14);
-    //pitch_out*=(1.0/3.14);
+    roll_out*=(1.0/3.14);
+    pitch_out*=(1.0/3.14);
     roll_out = constrain_float(roll_out, -1.0f, 1.0f);
     pitch_out = constrain_float(pitch_out, -1.0f, 1.0f);
    
