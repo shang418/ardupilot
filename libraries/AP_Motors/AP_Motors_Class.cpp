@@ -112,6 +112,16 @@ void AP_Motors::rc_write(uint8_t chan, uint16_t pwm)
         SRV_Channels::set_output_pwm(function, pwm);
     }
 }
+/*
+  read an output channel
+ */
+void AP_Motors::rc_read(uint8_t chan, uint16_t &pwm)
+{
+    SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(chan);
+    
+    SRV_Channels::get_output_pwm(function, pwm);
+    
+}
 
 /*
   write to an output channel for an angle actuator

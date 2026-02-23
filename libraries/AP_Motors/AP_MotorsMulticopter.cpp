@@ -245,6 +245,8 @@ AP_MotorsMulticopter::AP_MotorsMulticopter(uint16_t speed_hz) :
 // output - sends commands to the motors
 void AP_MotorsMulticopter::output()
 {
+    
+   
     // update throttle filter
     update_throttle_filter();
 
@@ -764,7 +766,7 @@ void AP_MotorsMulticopter::output_motor_mask(float thrust, uint16_t mask, float 
             int16_t pwm_output = pwm_min + pwm_range * _actuator[i];
             rc_write(i, pwm_output);
         }
-    }
+    } 
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)

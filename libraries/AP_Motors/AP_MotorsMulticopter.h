@@ -92,6 +92,7 @@ public:
     // return thrust for motor motor_num, returns true if value is valid false otherwise
     bool                get_thrust(uint8_t motor_num, float& thr_out) const override;
 
+
 #if HAL_LOGGING_ENABLED
     // 10hz logging of voltage scaling and max trust
     void                Log_Write() override;
@@ -110,10 +111,13 @@ public:
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo        var_info[];
 
+
 protected:
 
     // run spool logic
     void                output_logic();
+
+    
 
     // output_to_motors - sends commands to the motors
     virtual void        output_to_motors() = 0;

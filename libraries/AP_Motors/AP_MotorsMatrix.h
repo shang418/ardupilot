@@ -14,7 +14,7 @@
 class AP_MotorsMatrix : public AP_MotorsMulticopter {
 public:
 
-    /// Constructor
+ /// Constructor
     AP_MotorsMatrix(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
         AP_MotorsMulticopter(speed_hz)
     {
@@ -23,6 +23,7 @@ public:
         }
         _singleton = this;
     };
+
 
     // get singleton instance
     static AP_MotorsMatrix *get_singleton() {
@@ -57,6 +58,9 @@ public:
 
     // output_to_motors - sends minimum values out to the motors
     virtual void        output_to_motors() override;
+
+    // get measured values from motor setup
+    bool get_torques_measured(float &roll, float &pitch, float &yaw,float arm_length = 0.48f) override;
 
     // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
     //  this can be used to ensure other pwm outputs (i.e. for servos) do not conflict
@@ -103,6 +107,13 @@ public:
 
     // pull values direct, (examples only)
     float get_thrust_rpyt_out(uint8_t i) const;
+
+    // get thrust and throttle values from pwm 
+    float get_pwm_to_thrust(uint16_t pwm) ; 
+    float get_pwm_to_torque(uint16_t pwm) ; 
+    
+    
+   
     bool get_factors(uint8_t i, float &roll, float &pitch, float &yaw, float &throttle, uint8_t &testing_order) const;
 
 protected:
@@ -144,7 +155,7 @@ protected:
     float               _throttle_factor[AP_MOTORS_MAX_NUM_MOTORS];  // each motors contribution to throttle 0~1
     float               _thrust_rpyt_out[AP_MOTORS_MAX_NUM_MOTORS]; // combined roll, pitch, yaw and throttle outputs to motors in 0~1 range
     uint8_t             _test_order[AP_MOTORS_MAX_NUM_MOTORS];  // order of the motors in the test sequence
-
+    MotorDef     _motors[AP_MOTORS_MAX_NUM_MOTORS]; // the motor framework with angle location relative to c.g, yaw factor directions[CW/CCW] and num/order
     // motor failure handling
     float               _thrust_rpyt_out_filt[AP_MOTORS_MAX_NUM_MOTORS];    // filtered thrust outputs with 1 second time constant
     uint8_t             _motor_lost_index;  // index number of the lost motor
@@ -154,6 +165,7 @@ protected:
 
     const char*         _frame_class_string = ""; // string representation of frame class
     const char*         _frame_type_string = "";  //  string representation of frame type
+
 
 private:
 
