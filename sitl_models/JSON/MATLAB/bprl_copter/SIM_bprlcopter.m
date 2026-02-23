@@ -61,7 +61,7 @@ std_fit = 347.5;
 pwm_in = (pwm_in - mean_fit)/std_fit;
 x_thrust = [pwm_in^6;pwm_in^5;pwm_in^4; pwm_in^3;pwm_in^2;pwm_in;1];
 x_torque = [pwm_in^4; pwm_in^3;pwm_in^2;pwm_in;1];
-thrust = p_coeffs_thrust*x_thrust + 0.1797;
+thrust = p_coeffs_thrust*x_thrust;
 torque = p_coeffs_torque*x_torque;
 end
 

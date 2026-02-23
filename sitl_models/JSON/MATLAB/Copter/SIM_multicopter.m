@@ -91,8 +91,7 @@ for i = 1:numel(state.copter.motors)
 
     % Calculate the thrust (with fudge factor!)
     thrust = 2.2 * motor.prop.TConst * state.environment.density * rps^2 * motor.prop.diameter^4;
-    sprintf('thrust: %0.4f',thrust)
-    sprintf('torque: %0.4f',torque)
+
     % calculate resulting moments
     moment_roll = thrust * motor.location(1);
     moment_pitch = thrust * motor.location(2);

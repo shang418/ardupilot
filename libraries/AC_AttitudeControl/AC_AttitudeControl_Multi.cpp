@@ -481,8 +481,8 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 
     // Get smoothed derivatives (rad/s^2) - Z is unused
     Vector3f angular_accel;
-    angular_accel.x = _deriv_filter_x.slope();
-    angular_accel.y = _deriv_filter_y.slope();
+    angular_accel.x = _deriv_filter_x.slope()*1.0e4f;
+    angular_accel.y = _deriv_filter_y.slope()*1.0e4f;
     angular_accel.z = 0.0f;
 
     return angular_accel;
@@ -524,7 +524,7 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     // get acceleration measurements here from IMU derivative filter 
     Vector3f _accel_meas = compute_angular_accel(_rate_gyro);
 
-    //hal.console->printf("\n Deriv Filtered Acceleration from IMU [roll, pitch]: [%.3f,%.3f] \n ", _accel_meas.x,_accel_meas.y);
+    hal.console->printf("\n Deriv Filtered Acceleration from IMU [roll, pitch]: [%.7f,%.7f] \n ", _accel_meas.x,_accel_meas.y);
 
     //float _accel_roll_error = _pid_accel_roll.filter_error(_accel_roll_target, _accel_meas.x, dt, _motors.limit.roll);
     //float _accel_pitch_error = _pid_accel_pitch.filter_error(_accel_pitch_target, _accel_meas.y, dt, _motors.limit.pitch);
@@ -548,14 +548,14 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     roll_out =_pid_accel_roll.update_total(_motors.get_roll(),_accel_roll_target, _accel_meas.x, dt, _kp_roll,_motors.limit.roll, _pd_scale.x); // leak guard lambda = 0.001
     pitch_out = _pid_accel_pitch.update_total(_motors.get_pitch(),_accel_pitch_target, _accel_meas.y, dt,_kp_pitch, _motors.limit.pitch, _pd_scale.y);
 
-    //hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+    hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
     
     roll_out*=(1.0/3.14);
     pitch_out*=(1.0/3.14);
     roll_out = constrain_float(roll_out, -1.0f, 1.0f);
     pitch_out = constrain_float(pitch_out, -1.0f, 1.0f);
    
-    //hal.console->printf("\n Final Output Torques [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+    hal.console->printf("\n Final Output Torques [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
 
     // Set motor outputs
     _motors.set_roll(roll_out);
