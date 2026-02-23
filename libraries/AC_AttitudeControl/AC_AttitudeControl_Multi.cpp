@@ -481,8 +481,8 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 
     // Get smoothed derivatives (rad/s^2) - Z is unused
     Vector3f angular_accel;
-    angular_accel.x = _deriv_filter_x.slope();
-    angular_accel.y = _deriv_filter_y.slope();
+    angular_accel.x = _deriv_filter_x.slope()*1.0e4f;
+    angular_accel.y = _deriv_filter_y.slope()*1.0e4f;
     angular_accel.z = 0.0f;
 
     return angular_accel;
@@ -533,8 +533,8 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     //float _accel_pitch_increment = _pid_accel_pitch.update_all(_accel_pitch_target, _accel_meas.y, dt, _motors.limit.pitch, _pd_scale.y);
 
     // this is the INDI control 
-    float _kp_roll = 0.5f; //  = 0.1* inv(0.016) replace this later
-    float _kp_pitch = 0.5f; // replace this later
+    float _kp_roll = 0.75f; //  = 0.1* inv(0.016) replace this later
+    float _kp_pitch = 0.75f; // replace this later
     //float _accel_roll_increment = (_accel_roll_error * _kp_roll);
     // this is the INDI control 
     //float _accel_pitch_increment = (_accel_pitch_error * _kp_pitch);
@@ -542,6 +542,7 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     float roll_torque_meas; float pitch_torque_meas; float yaw_torque_meas; 
     //hal.console->printf("\n Output Torque Increments [roll, pitch]: [%.3f,%.3f] \n ", _accel_roll_increment,_accel_pitch_increment);
     _motors.get_torques_measured(roll_torque_meas,pitch_torque_meas,yaw_torque_meas);
+    // each motor contributes -1 to 1. 4 motors
     hal.console->printf("\n get motor [roll, pitch]: [%.3f,%.3f] \n ", roll_torque_meas,pitch_torque_meas);
 
     // estimate rotational drag
