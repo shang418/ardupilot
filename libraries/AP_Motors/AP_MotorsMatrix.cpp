@@ -1409,8 +1409,8 @@ bool AP_MotorsMatrix::get_torques_measured(float &roll, float &pitch, float &yaw
         //hal.console->printf("\n Motor i:%d,Order: %d, Roll Torque: %0.4f,Pitch Torque: %0.4f",i,_motors[i].testing_order,thrust*0.5*arm_length*sinf((float) ToRad(_motors[i].angle_degrees)),thrust*0.5*arm_length*cosf((float) ToRad(_motors[i].angle_degrees)));
         }
     }
-    roll = -roll_torque/4.0f; 
-    pitch = pitch_torque/4.0f; 
+    roll = -roll_torque/2.0f; 
+    pitch = pitch_torque/2.0f; 
     yaw = yaw_torque; 
     //hal.console->printf("\n PWM:%d, Roll Torque: %0.4f,Pitch Torque: %0.4f,Yaw Torque: %0.4f",pwm,roll_torque,pitch_torque,yaw_torque);
 
