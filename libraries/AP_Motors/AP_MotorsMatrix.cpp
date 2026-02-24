@@ -1385,7 +1385,7 @@ float AP_MotorsMatrix::get_pwm_to_thrust(uint16_t pwm)
     float pwm_scaled = (pwm - mean_fit)/std_fit;
     float thrust = (((((-0.3194f * pwm_scaled + 0.2139f)* pwm_scaled + 0.6471f)* pwm_scaled - 0.8549f)* pwm_scaled + 1.7615f)* pwm_scaled + 5.6188f)* pwm_scaled + 2.7367f;
     
-    return (thrust+0.1797f)/14.0f;
+    return thrust;
 }
 bool AP_MotorsMatrix::get_torques_measured(float &roll, float &pitch, float &yaw, float arm_length) 
 {   
@@ -1398,7 +1398,7 @@ bool AP_MotorsMatrix::get_torques_measured(float &roll, float &pitch, float &yaw
     
     for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]){
-        rc_read(_motors[i].testing_order, pwm); // should it be i or testing order?>
+        rc_read(i, pwm); // should it be i or testing order?>
         
         float torque = get_pwm_to_torque(pwm); 
         float thrust = get_pwm_to_thrust(pwm); 
@@ -1409,8 +1409,8 @@ bool AP_MotorsMatrix::get_torques_measured(float &roll, float &pitch, float &yaw
         //hal.console->printf("\n Motor i:%d,Order: %d, Roll Torque: %0.4f,Pitch Torque: %0.4f",i,_motors[i].testing_order,thrust*0.5*arm_length*sinf((float) ToRad(_motors[i].angle_degrees)),thrust*0.5*arm_length*cosf((float) ToRad(_motors[i].angle_degrees)));
         }
     }
-    roll = -roll_torque/2.0f; 
-    pitch = pitch_torque/2.0f; 
+    roll = -roll_torque/3.36f; 
+    pitch = pitch_torque/3.36f; 
     yaw = yaw_torque; 
     //hal.console->printf("\n PWM:%d, Roll Torque: %0.4f,Pitch Torque: %0.4f,Yaw Torque: %0.4f",pwm,roll_torque,pitch_torque,yaw_torque);
 
