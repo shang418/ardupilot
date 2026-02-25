@@ -539,12 +539,15 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     // this is the INDI control 
     //float _accel_pitch_increment = (_accel_pitch_error * _kp_pitch);
 
-    hal.console->printf("Measured Accel: [roll, pitch]: [%.5f,%.5f] \n ",_accel_meas.x,_accel_meas.y);
+    //hal.console->printf("Measured Accel: [roll, pitch]: [%.5f,%.5f] \n ",_accel_meas.x,_accel_meas.y);
+    //hal.console->printf("\n Target Accel [roll, pitch]: [%.5f,%.5f] \n ", _accel_roll_target,_accel_pitch_target);
     float roll_torque_meas; float pitch_torque_meas; float yaw_torque_meas; 
     
     _motors.get_torques_measured(roll_torque_meas,pitch_torque_meas,yaw_torque_meas);
     // each motor contributes -1 to 1. 4 motors
-    hal.console->printf("\n get motor [roll, pitch]: [%.3f,%.3f] \n ", roll_torque_meas,pitch_torque_meas);
+    //hal.console->printf("\n get motor torques measured [roll, pitch]: [%.3f,%.3f] \n ", roll_torque_meas,pitch_torque_meas);
+
+   
 
     // estimate rotational drag
     // float rotational_drag = 0.2 * sign(gyro) *(gyro^2);
@@ -554,14 +557,14 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     roll_out =_pid_accel_roll.update_total(roll_torque_meas,_accel_roll_target, _accel_meas.x, dt, _kp_roll,_motors.limit.roll, _pd_scale.x); // leak guard lambda = 0.001
     pitch_out = _pid_accel_pitch.update_total(pitch_torque_meas,_accel_pitch_target, _accel_meas.y, dt,_kp_pitch, _motors.limit.pitch, _pd_scale.y);
 
-    hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+    //hal.console->printf("\n Output Torques before scaling [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
     
-    //roll_out*=(1.0/3.14);
-    //pitch_out*=(1.0/3.14);
+    roll_out*=(1.0/3.14);
+    pitch_out*=(1.0/3.14);
     roll_out = constrain_float(roll_out, -1.0f, 1.0f);
     pitch_out = constrain_float(pitch_out, -1.0f, 1.0f);
    
-    hal.console->printf("\n Final Output Torques [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
+    //hal.console->printf("\n Final Output Torques [roll, pitch]: [%.3f,%.3f] \n ", roll_out,pitch_out);
 
     // Set motor outputs
     _motors.set_roll(roll_out);
