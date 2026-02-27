@@ -54,12 +54,12 @@ end
 % compute thrust from PWM
 function [thrust,torque] = fit_pwm_to_thrust_torque(pwm_in)
 % poly4 fit from sysid mean_fit        
-p_coeffs_thrust = [-0.3194    0.2139    0.6471   -0.8549    1.7615    5.6188    2.7367];
+p_coeffs_thrust = [-0.0161 -0.3504 0.7237 5.7302 5.8523];
 p_coeffs_torque = [-0.0042   -0.0086    0.0396    0.0966    0.0515];
-mean_fit = 1445;
-std_fit = 347.5;
+mean_fit = 1546;
+std_fit = 255.6;
 pwm_in = (pwm_in - mean_fit)/std_fit;
-x_thrust = [pwm_in^6;pwm_in^5;pwm_in^4; pwm_in^3;pwm_in^2;pwm_in;1];
+x_thrust = [pwm_in^4; pwm_in^3;pwm_in^2;pwm_in;1];
 x_torque = [pwm_in^4; pwm_in^3;pwm_in^2;pwm_in;1];
 thrust = p_coeffs_thrust*x_thrust ;
 torque = p_coeffs_torque*x_torque;
