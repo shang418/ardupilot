@@ -21,8 +21,8 @@ total_table = array2table(total_data,'VariableNames',{'PWM','Thrust','Torque'});
 
 mean_table = array2table(mean_data,'VariableNames',{'PWM','Thrust','Torque'});
 
-aggregated_curve_fit = curveFitter(total_table.PWM,total_table.Thrust); 
+% aggregated_curve_fit = curveFitter(total_table.PWM,total_table.Thrust); 
 mean_curve_fit = curveFitter(mean_table.PWM,mean_table.Thrust); 
 
-aggregated_curve_fit_torque = curveFitter(total_table.PWM,total_table.Torque); 
-mean_curve_fit_torque = curveFitter(mean_table.PWM,mean_table.Torque); 
+% aggregated_curve_fit_torque = curveFitter(total_table.PWM,total_table.Torque); 
+% mean_curve_fit_torque = curveFitter(mean_table.PWM,mean_table.Torque); 
