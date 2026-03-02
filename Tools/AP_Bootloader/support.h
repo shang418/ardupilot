@@ -5,10 +5,6 @@
 #define LED_ACTIVITY	1
 #define LED_BOOTLOADER	2
 
-#ifndef AP_FLASH_ECC_CHECK_ENABLED
-#define AP_FLASH_ECC_CHECK_ENABLED defined(STM32H7) && CH_CFG_USE_HEAP
-#endif
-
 /* board info forwarded from board-specific code to booloader */
 struct boardinfo {
     uint32_t	board_type;
@@ -58,7 +54,7 @@ void thread_sleep_us(uint32_t us);
 
 void custom_startup(void);
 
-#if AP_FLASH_ECC_CHECK_ENABLED
+#if defined(STM32H7) && CH_CFG_USE_HEAP
 void check_ecc_errors(void);
 #endif
 

@@ -138,7 +138,6 @@ bool Plane::start_command(const AP_Mission::Mission_Command& cmd)
         }
         break;
 
-    case MAV_CMD_DO_RETURN_PATH_START:
     case MAV_CMD_DO_LAND_START:
         break;
 
@@ -308,7 +307,6 @@ bool Plane::verify_command(const AP_Mission::Mission_Command& cmd)        // Ret
     case MAV_CMD_DO_CHANGE_SPEED:
     case MAV_CMD_DO_SET_HOME:
     case MAV_CMD_DO_INVERTED_FLIGHT:
-    case MAV_CMD_DO_RETURN_PATH_START:
     case MAV_CMD_DO_LAND_START:
     case MAV_CMD_DO_FENCE_ENABLE:
     case MAV_CMD_DO_AUTOTUNE_ENABLE:
@@ -750,10 +748,8 @@ bool Plane::verify_loiter_turns(const AP_Mission::Mission_Command &cmd)
     // LOITER_TURNS makes no sense as VTOL
     auto_state.vtol_loiter = false;
 
-    if (!reached_loiter_target()) {
-        result = false;
-    } else if (condition_value != 0) {
-        // primary goal, loiter turns
+    if (condition_value != 0) {
+        // primary goal, loiter time
         if (loiter.sum_cd > loiter.total_cd && loiter.sum_cd > 1) {
             // primary goal completed, initialize secondary heading goal
             condition_value = 0;

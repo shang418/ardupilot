@@ -995,6 +995,7 @@ class ChibiOSHWDef(object):
 #define STM32_ETH_BUFFERS_EXTERN
 
 ''')
+
         defines = self.get_mcu_config('DEFINES', False)
         if defines is not None:
             for d in defines.keys():
@@ -1011,7 +1012,7 @@ class ChibiOSHWDef(object):
         if self.get_config('PROCESS_STACK', required=False):
             self.env_vars['PROCESS_STACK'] = self.get_config('PROCESS_STACK')
         else:
-            self.env_vars['PROCESS_STACK'] = "0x1C00"
+            self.env_vars['PROCESS_STACK'] = "0x7000"
 
         f.write('#define HAL_PROCESS_STACK_SIZE %s\n' % self.env_vars['PROCESS_STACK'])
         # MAIN_STACK is location of initial stack on startup and is also the stack
@@ -1096,8 +1097,6 @@ class ChibiOSHWDef(object):
                 # storage at end of flash - leave room
                 if offset > bl_offset:
                     flash_reserve_end = flash_size - offset
-            if self.is_bootloader_fw():
-                f.write('#define STORAGE_FLASH_START_PAGE %u\n' % storage_flash_page)
 
         crashdump_enabled = bool(self.intdefines.get('AP_CRASHDUMP_ENABLED', (flash_size >= 2048 and not self.is_bootloader_fw())))  # noqa
         # lets pick a flash sector for Crash log
@@ -3311,12 +3310,6 @@ Please run: Tools/scripts/build_bootloaders.py %s
 
         self.mcu_type = self.get_config('MCU', 1)
         self.progress("Setup for MCU %s" % self.mcu_type)
-
-        # put USE_BOOTLOADER_FROM_BOARD into the environment so the
-        # build process can use it when generating hex files:
-        use_bootloader_from_board = self.get_config('USE_BOOTLOADER_FROM_BOARD', default=None, required=False)
-        if use_bootloader_from_board is not None:
-            self.env_vars['USE_BOOTLOADER_FROM_BOARD'] = use_bootloader_from_board
 
         # build a list for peripherals for DMA resolver
         self.periph_list = self.build_peripheral_list()

@@ -29,6 +29,7 @@ void GCS_Plane::update_vehicle_sensor_status_flags(void)
     bool attitude_stabilized = false;
     switch (plane.control_mode->mode_number()) {
     case Mode::Number::MANUAL:
+    case Mode::Number::CUSTOM: //added because no stabilization by AP will be required since the MATLAB-Controller has this task.
         break;
 
     case Mode::Number::ACRO:
@@ -118,7 +119,7 @@ void GCS_Plane::update_vehicle_sensor_status_flags(void)
     const RangeFinder *rangefinder = RangeFinder::get_singleton();
     if (rangefinder && rangefinder->has_orientation(plane.rangefinder_orientation())) {
         control_sensors_present |= MAV_SYS_STATUS_SENSOR_LASER_POSITION;
-        if (uint16_t(plane.g.rangefinder_landing.get()) != 0) {
+        if (plane.g.rangefinder_landing) {
             control_sensors_enabled |= MAV_SYS_STATUS_SENSOR_LASER_POSITION;
         }
         if (rangefinder->has_data_orient(plane.rangefinder_orientation())) {

@@ -182,6 +182,7 @@ public:
     friend class Parameters;
     friend class ParametersG2;
     friend class AP_Avoidance_Copter;
+    friend class AP_Mission;
 
 #if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
     friend class AP_AdvancedFailsafe_Copter;
@@ -217,6 +218,7 @@ public:
     friend class ModeSmartRTL;
     friend class ModeSport;
     friend class ModeStabilize;
+    friend class ModeCustom;
     friend class ModeStabilize_Heli;
     friend class ModeSystemId;
     friend class ModeThrow;
@@ -247,9 +249,6 @@ private:
     RC_Channel *channel_pitch;
     RC_Channel *channel_throttle;
     RC_Channel *channel_yaw;
-
-    // channel which is being used to tune a parameter value:
-    RC_Channel *rc_tuning;
 
     // flight modes convenience array
     AP_Int8 *flight_modes;
@@ -1020,6 +1019,9 @@ private:
 #endif
 #if MODE_DRIFT_ENABLED
     ModeDrift mode_drift;
+#endif
+#if MODE_CUSTOM_ENABLED
+    ModeCustom mode_custom;
 #endif
 #if MODE_FLIP_ENABLED
     ModeFlip mode_flip;

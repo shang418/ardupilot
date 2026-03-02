@@ -28,11 +28,8 @@
 #include <AP_Logger/AP_Logger.h>
 #include <AP_HAL/utility/replace.h>
 #include <SRV_Channel/SRV_Channel.h>
-#include <AP_Filesystem/AP_Filesystem.h>
 
 #define UDP_TIMEOUT_MS 100
-
-#define SITL_JSON_DEBUG 0
 
 extern const AP_HAL::HAL& hal;
 
@@ -88,6 +85,13 @@ JSON::JSON(const char *frame_str) :
 */
 void JSON::set_interface_ports(const char* address, const int port_in, const int port_out)
 {
+    if (!sock.bind("0.0.0.0", port_in)) {
+        fprintf(stderr, "SITL: socket in bind failed on sim in : %d  - %s\n", port_in, strerror(errno));
+        fprintf(stderr, "Aborting launch...\n");
+        exit(1);
+    }
+    printf("Bind %s:%d for SITL in\n", "127.0.0.1", port_in);
+
     sock.set_blocking(false);
     sock.reuseaddress();
 
@@ -147,22 +151,6 @@ void JSON::output_servos(const struct sitl_input &input)
 uint32_t JSON::parse_sensors(const char *json)
 {
     uint32_t received_bitmask = 0;
-
-#if SITL_JSON_DEBUG && AP_FILESYSTEM_FILE_WRITING_ENABLED
-    // it is useful in some environments to be able to get a copy of the raw
-    // JSON data
-    const uint32_t now_ms = AP_HAL::millis();
-    if (now_ms - last_debug_ms >= 1000) {
-        // dump received JSON at 1Hz for easy debugging
-        last_debug_ms = now_ms;
-        auto &fs = AP::FS();
-        int fd = fs.open("json_debug.txt", O_WRONLY|O_CREAT|O_TRUNC);
-        if (fd != -1) {
-            fs.write(fd, json, strlen(json));
-            fs.close(fd);
-        }
-    }
-#endif
 
     //printf("%s\n", json);
     for (uint16_t i=0; i<ARRAY_SIZE(keytable); i++) {
@@ -239,18 +227,11 @@ uint32_t JSON::parse_sensors(const char *json)
                 break;
             }
 
-            case BOOLEAN: {
-                bool *b = (bool *)key.ptr;
-                if (strncasecmp(p, "true", 4) == 0) {
-                    *b = true;
-                } else if (strncasecmp(p, "false", 5) == 0) {
-                    *b = false;
-                } else {
-                    *b = strtoull(p, nullptr, 10) != 0;
-                }
+            case BOOLEAN:
+                *((bool *)key.ptr) = strtoull(p, nullptr, 10) != 0;
                 //printf("%s/%s = %i\n", key.section, key.key, *((unit8_t *)key.ptr));
                 break;
-            }
+
         }
     }
 
@@ -333,18 +314,7 @@ void JSON::recv_fdm(const struct sitl_input &input)
     velocity_ef = state.velocity;
     position = state.position;
     position.xy() += origin.get_distance_NE_double(home);
-
-    if (received_bitmask & TIME_SYNC) {
-        if (use_time_sync != !state.no_time_sync) {
-            use_time_sync = !state.no_time_sync;
-            printf("Forcing use_time_sync=%d\n", int(use_time_sync));
-            if (!use_time_sync) {
-                // if not using time sync then default EKF type to 10, as
-                // otherwise EKF is likely to diverge
-                AP_Param::set_default_by_name("AHRS_EKF_TYPE", 10);
-            }
-        }
-    }
+    use_time_sync = !state.no_time_sync;
 
     // deal with euler or quaternion attitude
     if ((received_bitmask & QUAT_ATT) != 0) {
@@ -374,10 +344,6 @@ void JSON::recv_fdm(const struct sitl_input &input)
         update_eas_airspeed();
     }
 
-    if ((received_bitmask & WIND_VEL) != 0) {
-        wind_ef = state.velocity_wind;
-    }
-
     // Convert from a meters from origin physics to a lat long alt
     update_position();
 
@@ -395,25 +361,6 @@ void JSON::recv_fdm(const struct sitl_input &input)
     }
     if ((received_bitmask & WIND_SPD) != 0) {
         wind_vane_apparent.speed = state.wind_vane_apparent.speed;
-    }
-
-    // update RC input
-    static_assert(ARRAY_SIZE(state.rc) <= ARRAY_SIZE(rcin), "JSON rc in size mismatch");
-    uint8_t rc_chan_count = 0;
-    for (uint8_t i=0; i<ARRAY_SIZE(state.rc); i++) {
-        if ((received_bitmask & (RC_1 << i)) != 0) {
-            rcin[i] = (state.rc[i] - 1000.0f) / 1000.0f;
-            rc_chan_count = i+1;
-        }
-    }
-    rcin_chan_count = rc_chan_count;
-
-    // update battery state
-    if ((received_bitmask & BAT_VOLT) != 0) {
-        battery_voltage = state.bat_volt; 
-    }
-    if ((received_bitmask & BAT_AMP) != 0) {
-        battery_current = state.bat_amp; 
     }
 
     double deltat;
@@ -520,9 +467,7 @@ void JSON::update(const struct sitl_input &input)
     update_mag_field_bf();
 
     // allow for changes in physics step
-    if (use_time_sync) {
-        adjust_frame_time(constrain_float(sitl->loop_rate_hz, rate_hz-1, rate_hz+1));
-    }
+    adjust_frame_time(constrain_float(sitl->loop_rate_hz, rate_hz-1, rate_hz+1));
 
 #if 0
     // report frame rate

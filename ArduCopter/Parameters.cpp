@@ -249,7 +249,7 @@ const AP_Param::Info Copter::var_info[] = {
     // @Param: FLTMODE1
     // @DisplayName: Flight Mode 1
     // @Description: Flight mode when pwm of Flightmode channel(FLTMODE_CH) is <= 1230
-    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate,27:Auto RTL,28:Turtle
+    // @Values: 0:Stabilize,1:Acro,2:AltHold,3:Auto,4:Guided,5:Loiter,6:RTL,7:Circle,9:Land,11:Drift,13:Sport,14:Flip,15:AutoTune,16:PosHold,17:Brake,18:Throw,19:Avoid_ADSB,20:Guided_NoGPS,21:Smart_RTL,22:FlowHold,23:Follow,24:ZigZag,25:SystemID,26:Heli_Autorotate,27:Auto RTL,28:Turtle,29:Custom
     // @User: Standard
     GSCALAR(flight_mode1, "FLTMODE1",               (uint8_t)FLIGHT_MODE_1),
 
@@ -727,6 +727,12 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: ../libraries/AP_Vehicle/AP_Vehicle.cpp
     PARAM_VEHICLE_INFO,
 
+    // ModeCustom and MatlabControllerClass
+    // @Group: ML
+    // @Path: ../ArduCopter/ModeCustom.cpp
+    // @Path: ../libraries/AC_AttitudeControl/MatlabController.cpp
+    GOBJECT(mode_custom, "ML_", ModeCustom),
+
     AP_VAREND
 };
 
@@ -906,13 +912,13 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // @Param: TUNE_MIN
     // @DisplayName: Tuning minimum
-    // @Description: Transmitter Tuning minum value. The parameter being tuned will have its value set to this minimum value when the tuning knob is at its lowest position
+    // @Description: Minimum value that the parameter currently being tuned with the transmitter's channel 6 knob will be set to
     // @User: Standard
     AP_GROUPINFO("TUNE_MIN", 31, ParametersG2, tuning_min, 0),
 
     // @Param: TUNE_MAX
     // @DisplayName: Tuning maximum
-    // @Description: Transmitter Tuning maximum value. The parameter being tuned will have its value set to this maximum value when the tuning knob is at its highest position
+    // @Description: Maximum value that the parameter currently being tuned with the transmitter's channel 6 knob will be set to
     // @User: Standard
     AP_GROUPINFO("TUNE_MAX", 32, ParametersG2, tuning_max, 0),
 

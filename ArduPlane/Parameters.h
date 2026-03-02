@@ -349,6 +349,9 @@ public:
 
         // 254,255: reserved
 
+        // ModeCustom and MatlabControllerClass
+        k_param_mode_custom = 256,
+
         k_param_vehicle = 257, // vehicle common block of parameters
         k_param_gcs4,          // stream rates
         k_param_gcs5,          // stream rates
@@ -586,10 +589,6 @@ public:
 #if AP_RANGEFINDER_ENABLED
     // orientation of rangefinder to use for landing
     AP_Int8 rangefinder_land_orient;
-#endif
-
-#if AP_PLANE_SYSTEMID_ENABLED
-    AP_SystemID systemid;
 #endif
 };
 

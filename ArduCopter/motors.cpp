@@ -135,6 +135,15 @@ void Copter::auto_disarm_check()
 // motors_output - send output to motors library which will adjust and send to ESCs and servos
 void Copter::motors_output()
 {
+    // if custom mode is enabled, call custom output method
+    const char *fm_name_pointer = flightmode->name4();
+    //std::string fm_name(fm_name_pointer, 4);  // string not supported for build
+    char comparison_char = 'X';
+    bool is_custom_mode = *fm_name_pointer == comparison_char;
+    //bool is_custom_mode = fm_name.compare("XXXX") == 0;   // string not supported for build
+    if(!is_custom_mode) { 
+
+
 #if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
     // this is to allow the failsafe module to deliberately crash
     // the vehicle. Only used in extreme circumstances to meet the
@@ -184,6 +193,8 @@ void Copter::motors_output()
 
     // push all channels
     srv.push();
+
+    };
 }
 
 // check for pilot stick input to trigger lost vehicle alarm

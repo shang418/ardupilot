@@ -55,14 +55,6 @@ public:
 
     void convert_pid();
 
-    /*
-      set the in_recovery flag, which is used during a VTOL upset recovery
-      this flag only lasts one loop
-    */
-    void set_in_recovery(void) {
-        in_recovery = true;
-    }
-
 private:
     const AP_FixedWing &aparm;
     AP_AutoTune::ATGains gains;
@@ -76,6 +68,4 @@ private:
     AP_PIDInfo _pid_info;
 
     float _get_rate_out(float desired_rate, float scaler, bool disable_integrator, bool ground_mode);
-
-    bool in_recovery;
 };

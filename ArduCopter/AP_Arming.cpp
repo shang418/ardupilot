@@ -21,11 +21,6 @@ bool AP_Arming_Copter::run_pre_arm_checks(bool display_failure)
         return true;
     }
 
-    if (!hal.scheduler->is_system_initialized()) {
-        check_failed(display_failure, "System not initialised");
-        return false;
-    }
-
     // check if motor interlock and either Emergency Stop aux switches are used
     // at the same time.  This cannot be allowed.
     bool passed = true;

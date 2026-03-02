@@ -24,7 +24,7 @@ float Plane::calc_speed_scaler(void)
         speed_scaler = constrain_float(speed_scaler, scale_min, scale_max);
 
 #if HAL_QUADPLANE_ENABLED
-        if ((quadplane.in_vtol_mode() || quadplane.in_assisted_flight()) && arming.is_armed_and_safety_off()) {
+        if (quadplane.in_vtol_mode() && arming.is_armed_and_safety_off()) {
             // when in VTOL modes limit surface movement at low speed to prevent instability
             float threshold = airspeed_min * 0.5;
             if (aspeed < threshold) {
@@ -427,26 +427,30 @@ void Plane::stabilize()
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.nav_scripting.throttle_pct);
 #endif
     } else {
-        plane.control_mode->run();
+		if (control_mode != &mode_custom) {
+        	plane.control_mode->run();
+    	}
     }
 
     /*
       see if we should zero the attitude controller integrators. 
      */
-    if (is_zero(get_throttle_input()) &&
-        fabsf(relative_altitude) < 5.0f && 
-        fabsf(barometer.get_climb_rate()) < 0.5f &&
-        ahrs.groundspeed() < 3) {
-        // we are low, with no climb rate, and zero throttle, and very
-        // low ground speed. Zero the attitude controller
-        // integrators. This prevents integrator buildup pre-takeoff.
-        rollController.reset_I();
-        pitchController.reset_I();
-        yawController.reset_I();
+    if (control_mode != &mode_custom) {
+        if (is_zero(get_throttle_input()) &&
+            fabsf(relative_altitude) < 5.0f && 
+            fabsf(barometer.get_climb_rate()) < 0.5f &&
+            ahrs.groundspeed() < 3) {
+            // we are low, with no climb rate, and zero throttle, and very
+            // low ground speed. Zero the attitude controller
+            // integrators. This prevents integrator buildup pre-takeoff.
+            rollController.reset_I();
+            pitchController.reset_I();
+            yawController.reset_I();
 
-        // if moving very slowly also zero the steering integrator
-        if (ahrs.groundspeed() < 1) {
-            steerController.reset_I();            
+            // if moving very slowly also zero the steering integrator
+            if (ahrs.groundspeed() < 1) {
+                steerController.reset_I();            
+            }
         }
     }
 }

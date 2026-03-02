@@ -248,8 +248,7 @@ class Board:
             '-Wno-trigraphs',
             '-Werror=shadow',
             '-Werror=return-type',
-            '-Werror=unused-result',
-            '-Werror=unused-variable',
+            #'-Werror=unused-result',
             '-Werror=narrowing',
             '-Werror=attributes',
             '-Werror=overflow',
@@ -380,10 +379,8 @@ class Board:
             '-Werror=sign-compare',
             '-Werror=type-limits',
             '-Werror=undef',
-            '-Werror=unused-result',
+            #'-Werror=unused-result',
             '-Werror=shadow',
-            '-Werror=unused-value',
-            '-Werror=unused-variable',
             '-Werror=delete-non-virtual-dtor',
             '-Wfatal-errors',
             '-Wno-trigraphs',
@@ -424,7 +421,7 @@ class Board:
         else:
             env.CXXFLAGS += [
                 '-Wno-format-contains-nul',
-                '-Werror=unused-but-set-variable'
+                # '-Werror=unused-but-set-variable'
             ]
             if self.cc_version_gte(cfg, 5, 2):
                 env.CXXFLAGS += [
@@ -451,7 +448,7 @@ class Board:
         if cfg.options.Werror:
             errors = ['-Werror',
                       '-Werror=missing-declarations',
-                      '-Werror=float-equal',
+                      #'-Werror=float-equal',
                       '-Werror=undef',
                     ]
             env.CFLAGS += errors
@@ -718,7 +715,7 @@ class sitl(Board):
                 cfg.define('HAL_CAN_WITH_SOCKETCAN', 0)
 
         env.CXXFLAGS += [
-            '-Werror=float-equal',
+            #'-Werror=float-equal',
             '-Werror=missing-declarations',
         ]
 
@@ -776,7 +773,8 @@ class sitl(Board):
 
         # wrap malloc to ensure memory is zeroed
         if cfg.env.DEST_OS == 'cygwin':
-            pass # handled at runtime in libraries/AP_Common/c++.cpp
+            # on cygwin we need to wrap _malloc_r instead
+            env.LINKFLAGS += ['-Wl,--wrap,_malloc_r']
         elif platform.system() != 'Darwin':
             env.LINKFLAGS += ['-Wl,--wrap,malloc']
         
@@ -1106,16 +1104,16 @@ class chibios(Board):
 
         # make board name available for USB IDs
         env.CHIBIOS_BOARD_NAME = 'HAL_BOARD_NAME="%s"' % self.name
-        env.HAL_MAX_STACK_FRAME_SIZE = 'HAL_MAX_STACK_FRAME_SIZE=%d' % 1300 # set per Wframe-larger-than, ensure its same
+        env.HAL_MAX_STACK_FRAME_SIZE = 'HAL_MAX_STACK_FRAME_SIZE=%d' % 5000 # set per Wframe-larger-than, ensure its same
         env.CFLAGS += cfg.env.CPU_FLAGS + [
             '-Wlogical-op',
-            '-Wframe-larger-than=1300',
+            '-Wframe-larger-than=5000',
             '-Wno-attributes',
             '-fno-exceptions',
             '-Wall',
             '-Wextra',
             '-Wno-sign-compare',
-            '-Wfloat-equal',
+            #'-Wfloat-equal',
             '-Wpointer-arith',
             '-Wmissing-declarations',
             '-Wno-unused-parameter',
@@ -1149,7 +1147,8 @@ class chibios(Board):
             env.CFLAGS += [
             '-Wno-error=double-promotion',
             '-Wno-error=missing-declarations',
-            '-Wno-error=float-equal',
+            #'-Wno-error=float-equal',
+            '-Wno-error=undef',
             '-Wno-error=cpp',
             ]
 

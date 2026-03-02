@@ -136,7 +136,6 @@ extern const AP_HAL::HAL& hal;
 #define INV3_ID_ICM42605      0x42
 #define INV3_ID_ICM42688      0x47
 #define INV3_ID_IIM42652      0x6f
-#define INV3_ID_IIM42653      0x56
 #define INV3_ID_ICM42670      0x67
 #define INV3_ID_ICM45686      0xE9
 
@@ -259,12 +258,6 @@ void AP_InertialSensor_Invensensev3::start()
         devtype = DEVTYPE_INS_IIM42652;
         temp_sensitivity = 1.0 / 2.07;
         break;
-    case Invensensev3_Type::IIM42653:
-        devtype = DEVTYPE_INS_IIM42653;
-        temp_sensitivity = 1.0 / 2.07;
-        gyro_scale = GYRO_SCALE_4000DPS;
-        accel_scale = ACCEL_SCALE_32G;
-        break;
     case Invensensev3_Type::ICM42688:
         devtype = DEVTYPE_INS_ICM42688;
         temp_sensitivity = 1.0 / 2.07;
@@ -301,7 +294,6 @@ void AP_InertialSensor_Invensensev3::start()
         switch (inv3_type) {
             case Invensensev3_Type::ICM42688: // HiRes 19bit
             case Invensensev3_Type::IIM42652: // HiRes 19bit
-            case Invensensev3_Type::IIM42653: // HiRes 19bit
             case Invensensev3_Type::ICM45686: // HiRes 20bit
                 highres_sampling = dev->bus_type() == AP_HAL::Device::BUS_TYPE_SPI;
                 break;
@@ -323,10 +315,6 @@ void AP_InertialSensor_Invensensev3::start()
             temp_sensitivity = 1.0 / 128.0;
             accel_scale = ACCEL_SCALE_HIGHRES_32G;
             gyro_scale = GYRO_SCALE_HIGHRES_4000DPS;
-        } else if (inv3_type == Invensensev3_Type::IIM42653) {
-            accel_scale = ACCEL_SCALE_HIGHRES_32G;
-            gyro_scale = GYRO_SCALE_HIGHRES_4000DPS;
-            temp_sensitivity = 1.0 / 132.48;
         } else if (inv3_type == Invensensev3_Type::ICM42670) {
             temp_sensitivity = 1.0 / 128.0;
         }
@@ -820,7 +808,6 @@ void AP_InertialSensor_Invensensev3::set_filter_and_scaling(void)
     case Invensensev3_Type::ICM42688:
     case Invensensev3_Type::ICM42605:
     case Invensensev3_Type::IIM42652:
-    case Invensensev3_Type::IIM42653:
     case Invensensev3_Type::ICM42670: {
         /*
           fix for the "stuck gyro" issue, which affects all IxM42xxx
@@ -962,9 +949,6 @@ bool AP_InertialSensor_Invensensev3::check_whoami(void)
     case INV3_ID_IIM42652:
         inv3_type = Invensensev3_Type::IIM42652;
         return true;
-    case INV3_ID_IIM42653:
-        inv3_type = Invensensev3_Type::IIM42653;
-        return true;
     case INV3_ID_ICM42670:
         inv3_type = Invensensev3_Type::ICM42670;
         return true;
@@ -1040,7 +1024,6 @@ bool AP_InertialSensor_Invensensev3::hardware_init(void)
     switch (inv3_type) {
     case Invensensev3_Type::ICM45686:
     case Invensensev3_Type::ICM40609:
-    case Invensensev3_Type::IIM42653:
         _clip_limit = 29.5f * GRAVITY_MSS;
         break;
     case Invensensev3_Type::ICM42688:

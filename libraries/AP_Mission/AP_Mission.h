@@ -63,6 +63,16 @@ class AP_Mission
 {
 
 public:
+
+    static const uint16_t max_num_of_matlab_waypoints = 6;
+    float waypoints[max_num_of_matlab_waypoints][4];
+    uint16_t num_wp = 0;
+    // will be set true in case of mission update through function mission_updated
+    bool updated_waypoints = false;
+    void add_waypoint(uint16_t index, Vector3f location);
+    void add_speed(uint16_t index, float V_k);
+    void mission_updated(){updated_waypoints = true;};
+
     // jump command structure
     struct PACKED Jump_Command {
         uint16_t target;        // target command id
@@ -782,6 +792,9 @@ public:
     void set_log_start_mission_item_bit(uint32_t bit) { log_start_mission_item_bit = bit; }
 #endif
 
+    //setting the mission updated bool in mode_custom
+    void mission_complete();
+
 private:
     static AP_Mission *_singleton;
 
@@ -869,7 +882,7 @@ private:
 
     // Approximate the distance traveled to return to the mission path. DO_JUMP commands are observed in look forward.
     // Stop searching once reaching a landing or do-land-start
-    bool distance_to_mission_leg(uint16_t index, uint16_t &search_remaining, float &rejoin_distance, uint16_t &rejoin_index, const Location& current_loc);
+    bool distance_to_mission_leg(uint16_t index, float &rejoin_distance, uint16_t &rejoin_index, const Location& current_loc);
 
     // calculate the location of a resume cmd wp
     bool calc_rewind_pos(Mission_Command& rewind_cmd);

@@ -62,8 +62,7 @@ public:
     friend class ModeQAutotune;
     friend class ModeQAcro;
     friend class ModeLoiterAltQLand;
-    friend class AP_SystemID;
-
+    
     QuadPlane(AP_AHRS &_ahrs);
 
     static QuadPlane *get_singleton() {
@@ -191,8 +190,6 @@ public:
 
     // Get pilot throttle input with deadzone, this will return 50% throttle in failsafe!
     float get_throttle_input() const;
-
-    void Log_Write_AttRate();
 
 private:
     AP_AHRS &ahrs;
