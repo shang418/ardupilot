@@ -5,11 +5,11 @@
 //
 // File: rtwtypes.h
 //
-// Code generated for Simulink model 'ArduCopter_TemplateController'.
+// Code generated for Simulink model 'ArduCopter_INDIController'.
 //
-// Model version                  : 1.390
-// Simulink Coder version         : 9.0 (R2018b) 24-May-2018
-// C/C++ source code generated on : Tue Oct 18 18:48:13 2022
+// Model version                  : 15.3
+// Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
+// C/C++ source code generated on : Mon Mar  2 12:06:25 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: Intel->x86-64 (Linux 64)
@@ -24,13 +24,13 @@
 
 // Logical type definitions
 #if (!defined(__cplusplus))
-#  ifndef false
-#   define false                       (0U)
-#  endif
+#ifndef false
+#define false                          (0U)
+#endif
 
-#  ifndef true
-#   define true                        (1U)
-#  endif
+#ifndef true
+#define true                           (1U)
+#endif
 #endif
 
 //=======================================================================*

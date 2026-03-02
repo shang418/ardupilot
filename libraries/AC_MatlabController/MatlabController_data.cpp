@@ -5,11 +5,11 @@
 //
 // File: MatlabController_data.cpp
 //
-// Code generated for Simulink model 'ArduCopter_TemplateController'.
+// Code generated for Simulink model 'ArduCopter_INDIController'.
 //
-// Model version                  : 1.390
-// Simulink Coder version         : 9.0 (R2018b) 24-May-2018
-// C/C++ source code generated on : Tue Oct 18 18:48:13 2022
+// Model version                  : 15.3
+// Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
+// C/C++ source code generated on : Mon Mar  2 12:06:25 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: Intel->x86-64 (Linux 64)
@@ -22,10 +22,20 @@
 
 // Constant parameters (default storage)
 const ConstP rtConstP = {
-  // Computed Parameter: Constant_Value
-  //  Referenced by: '<S2>/Constant'
+  // Computed Parameter: MATLABFunction_G10
+  //  Referenced by: '<S44>/MATLAB Function'
 
-  { 0.11F, 0.12F, 0.13F, 0.14F, 0.15F, 0.16F, 0.17F, 0.18F }
+  { -2.38236014E-21F, 0.000594972691F, -1.89957173E-5F, -2.14894408E-5F,
+    -0.000594972691F, 0.0F, 1.89957173E-5F, -2.14894408E-5F, -2.38236014E-21F,
+    -0.000594972691F, -1.89957173E-5F, -2.14894408E-5F, 0.000594972691F, 0.0F,
+    1.89957173E-5F, -2.14894408E-5F },
+
+  // Computed Parameter: MATLABFunction_G20
+  //  Referenced by: '<S44>/MATLAB Function'
+
+  { -1.65437922E-16F, -0.0F, -1.31911719F, 0.0F, 1.65437922E-16F, 0.0F,
+    1.31911719F, 0.0F, -1.65437922E-16F, -0.0F, -1.31911719F, 0.0F,
+    1.65437922E-16F, 0.0F, 1.31911719F, 0.0F }
 };
 
 //
