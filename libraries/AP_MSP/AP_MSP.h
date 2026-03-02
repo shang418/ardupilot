@@ -19,12 +19,11 @@
 
 #pragma once
 
-#include "AP_MSP_config.h"
+#include <AP_OSD/AP_OSD.h>
+
+#include "AP_MSP_Telem_Backend.h"
 
 #if HAL_MSP_ENABLED
-
-#include <AP_OSD/AP_OSD.h>
-#include "AP_MSP_Telem_Backend.h"
 
 #define MSP_MAX_INSTANCES 3
 #define MSP_OSD_START 2048
@@ -45,7 +44,8 @@ public:
     AP_MSP();
 
     /* Do not allow copies */
-    CLASS_NO_COPY(AP_MSP);
+    AP_MSP(const AP_MSP &other) = delete;
+    AP_MSP &operator=(const AP_MSP&) = delete;
 
     // User settable parameters
     static const struct AP_Param::GroupInfo var_info[];
@@ -53,13 +53,13 @@ public:
     // init - perform required initialisation
     void init();
 
-    enum class Option : uint8_t {
-        TELEMETRY_MODE = 1U<<0,
-        TELEMETRY_DISABLE_DJI_WORKAROUNDS = 1U<<1,
-        DISPLAYPORT_BTFL_SYMBOLS = 1U<<2,
+    enum class MspOption : uint8_t {
+        OPTION_TELEMETRY_MODE = 1U<<0,
+        OPTION_TELEMETRY_DJI_WORKAROUNDS = 1U<<1,
+        OPTION_DISPLAYPORT_BTFL_SYMBOLS = 1U<<2,
     };
 
-    bool is_option_enabled(const Option option) const;
+    bool check_option(const MspOption option) const { return (_options & (uint8_t)option) != 0; };
 
     static AP_MSP *get_singleton(void)
     {
@@ -67,6 +67,7 @@ public:
     }
 
 private:
+
     AP_MSP_Telem_Backend *_backends[MSP_MAX_INSTANCES];
 
     AP_Int8 _options;
@@ -77,18 +78,16 @@ private:
     MSP::osd_config_t _osd_config;
 
     struct {
-        bool flashing_on;                                       // OSD item flashing support @1.4Hz
-        bool slow_flashing_on;                                  // OSD item flashing support @0.5H
+        bool flashing_on;                                       // OSD item flashing support
         uint8_t last_flight_mode = 255;
         uint32_t last_flight_mode_change_ms;
         bool flight_mode_focus;                                 // do we need to steal focus from text messages
         bool osd_initialized;                                   // for one time osd initialization
         uint8_t backend_count;                                  // actual count of active bacends
-        uint8_t current_screen;                                 // defaults to screen 0
     } _msp_status;
 
     bool init_backend(uint8_t backend_idx, AP_HAL::UARTDriver *uart, AP_SerialManager::SerialProtocol protocol);
-    void update_osd_item_settings();
+    void init_osd();
     void loop(void);
     AP_MSP_Telem_Backend* find_protocol(const AP_SerialManager::SerialProtocol protocol) const;
 

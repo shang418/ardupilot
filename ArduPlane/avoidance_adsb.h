@@ -12,7 +12,8 @@ public:
     using AP_Avoidance::AP_Avoidance;
 
     /* Do not allow copies */
-    CLASS_NO_COPY(AP_Avoidance_Plane);
+    AP_Avoidance_Plane(const AP_Avoidance_Plane &other) = delete;
+    AP_Avoidance_Plane &operator=(const AP_Avoidance_Plane&) = delete;
 
 protected:
     // override avoidance handler
@@ -25,10 +26,10 @@ protected:
     bool check_flightmode(bool allow_mode_change);
 
     // vertical avoidance handler
-    bool handle_avoidance_vertical(const AP_Avoidance::Obstacle *obstacle, bool allow_mode_change, Location &new_loc);
+    bool handle_avoidance_vertical(const AP_Avoidance::Obstacle *obstacle, bool allow_mode_change);
 
     // horizontal avoidance handler
-    bool handle_avoidance_horizontal(const AP_Avoidance::Obstacle *obstacle, bool allow_mode_change, Location &new_loc);
+    bool handle_avoidance_horizontal(const AP_Avoidance::Obstacle *obstacle, bool allow_mode_change);
 
     // control mode before avoidance began
     enum Mode::Number prev_control_mode_number = Mode::Number::RTL;

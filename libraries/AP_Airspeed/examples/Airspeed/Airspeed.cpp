@@ -65,7 +65,6 @@ void setup()
     board_config.init();
 
     // initialize airspeed
-    // Note airspeed.set_log_bit(LOG_BIT) would need to be called in order to enable logging
     airspeed.init();
 
     airspeed.calibrate(false);
@@ -81,7 +80,7 @@ void loop(void)
 
         // current system time in milliseconds
         timer = AP_HAL::millis();
-        airspeed.update();
+        airspeed.update(false);
         airspeed.get_temperature(temperature);
 
         // print temperature and airspeed to console

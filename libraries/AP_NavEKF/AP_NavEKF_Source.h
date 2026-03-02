@@ -12,7 +12,8 @@ public:
     AP_NavEKF_Source();
 
     /* Do not allow copies */
-    CLASS_NO_COPY(AP_NavEKF_Source);
+    AP_NavEKF_Source(const AP_NavEKF_Source &other) = delete;
+    AP_NavEKF_Source &operator=(const AP_NavEKF_Source&) = delete;
 
     enum class SourceXY : uint8_t {
         NONE = 0,
@@ -47,14 +48,7 @@ public:
 
     // enum for OPTIONS parameter
     enum class SourceOptions {
-        FUSE_ALL_VELOCITIES = (1 << 0),                 // fuse all velocities configured in source sets
-        ALIGN_EXTNAV_POS_WHEN_USING_OPTFLOW = (1 << 1)  // align position of inactive sources to ahrs when using optical flow
-    };
-
-    enum class SourceSetSelection : uint8_t {
-        PRIMARY = 0,
-        SECONDARY = 1,
-        TERTIARY = 2,
+        FUSE_ALL_VELOCITIES = (1 << 0)  // fuse all velocities configured in source sets
     };
 
     // initialisation
@@ -62,10 +56,10 @@ public:
 
     // get current position source
     SourceXY getPosXYSource() const { return _source_set[active_source_set].posxy; }
-    SourceZ getPosZSource() const;
+    SourceZ getPosZSource() const { return _source_set[active_source_set].posz; }
 
     // set position, velocity and yaw sources to either 0=primary, 1=secondary, 2=tertiary
-    void setPosVelYawSourceSet(SourceSetSelection source_set_idx);
+    void setPosVelYawSourceSet(uint8_t source_set_idx);
     uint8_t getPosVelYawSourceSet() const { return active_source_set; }
 
     // get/set velocity source
@@ -91,10 +85,10 @@ public:
     bool usingGPS() const;
 
     // true if source parameters have been configured (used for parameter conversion)
-    bool configured();
+    bool configured_in_storage();
 
-    // mark parameters as configured (used to ensure parameter conversion is only done once)
-    void mark_configured();
+    // mark parameters as configured in storage (used to ensure parameter conversion is only done once)
+    void mark_configured_in_storage();
 
     // returns false if we fail arming checks, in which case the buffer will be populated with a failure message
     // requires_position should be true if horizontal position configuration should be checked
@@ -109,9 +103,6 @@ public:
     // return true if wheel encoder is enabled on any source
     bool wheel_encoder_enabled(void) const;
 
-    // returns active source set 
-    uint8_t get_active_source_set() const;
-
     static const struct AP_Param::GroupInfo var_info[];
 
 private:
@@ -125,11 +116,8 @@ private:
         AP_Enum<SourceYaw> yaw;    // yaw source
     } _source_set[AP_NAKEKF_SOURCE_SET_MAX];
 
-    // helper to check if an option parameter bit has been set
-    bool option_is_set(SourceOptions option) const { return (_options.get() & int16_t(option)) != 0; }
-
     AP_Int16 _options;      // source options bitmask
 
     uint8_t active_source_set; // index of active source set
-    bool _configured; // true once configured has returned true
+    bool config_in_storage; // true once configured in storage has returned true
 };

@@ -5,6 +5,12 @@
  *
  */
 
+#define GSCALAR(v, name, def) { tracker.g.v.vtype, name, Parameters::k_param_ ## v, &tracker.g.v, {def_value : def} }
+#define ASCALAR(v, name, def) { tracker.aparm.v.vtype, name, Parameters::k_param_ ## v, (const void *)&tracker.aparm.v, {def_value : def} }
+#define GGROUP(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, &tracker.g.v, {group_info : class::var_info} }
+#define GOBJECT(v, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## v, (const void *)&tracker.v, {group_info : class::var_info} }
+#define GOBJECTN(v, pname, name, class) { AP_PARAM_GROUP, name, Parameters::k_param_ ## pname, (const void *)&tracker.v, {group_info : class::var_info} }
+
 const AP_Param::Info Tracker::var_info[] = {
     // @Param: FORMAT_VERSION
     // @DisplayName: Eeprom format version number
@@ -23,7 +29,6 @@ const AP_Param::Info Tracker::var_info[] = {
     // @DisplayName: Ground station MAVLink system ID
     // @Description: The identifier of the ground station in the MAVLink protocol. Don't change this unless you also modify the ground station to match.
     // @Range: 1 255
-    // @Increment: 1
     // @User: Advanced
     GSCALAR(sysid_my_gcs,           "SYSID_MYGCS",    255),
 
@@ -131,7 +136,7 @@ const AP_Param::Info Tracker::var_info[] = {
 
     // @Param: ONOFF_PITCH_MINT
     // @DisplayName: Pitch minimum movement time
-    // @Description: Minimum amount of time in seconds to move in pitch
+    // @Description: Minimim amount of time in seconds to move in pitch
     // @Units: s
     // @Increment: 0.01
     // @Range: 0 2
@@ -268,15 +273,15 @@ const AP_Param::Info Tracker::var_info[] = {
     // @User: Standard
     GSCALAR(log_bitmask, "LOG_BITMASK", DEFAULT_LOG_BITMASK),
 
-    // @Group: INS
+    // @Group: INS_
     // @Path: ../libraries/AP_InertialSensor/AP_InertialSensor.cpp
-    GOBJECT(ins,                    "INS", AP_InertialSensor),
+    GOBJECT(ins,                    "INS_", AP_InertialSensor),
 
     // @Group: AHRS_
     // @Path: ../libraries/AP_AHRS/AP_AHRS.cpp
     GOBJECT(ahrs,                   "AHRS_",    AP_AHRS),
 
-#if AP_SIM_ENABLED
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     // @Group: SIM_
     // @Path: ../libraries/SITL/SITL.cpp
     GOBJECT(sitl, "SIM_", SITL::SIM),
@@ -308,8 +313,10 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Group: SERVO
     // @Path: ../libraries/SRV_Channel/SRV_Channels.cpp
     GOBJECT(servo_channels,     "SERVO", SRV_Channels),
-
-    // AP_SerialManager was here
+    
+    // @Group: SERIAL
+    // @Path: ../libraries/AP_SerialManager/AP_SerialManager.cpp
+    GOBJECT(serial_manager,    "SERIAL",   AP_SerialManager),
 
     // @Param: PITCH2SRV_P
     // @DisplayName: Pitch axis controller P gain
@@ -376,33 +383,6 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Description: Sets an upper limit on the slew rate produced by the combined P and D gains. If the amplitude of the control action produced by the rate feedback exceeds this value, then the D+P gain is reduced to respect the limit. This limits the amplitude of high frequency oscillations caused by an excessive gain. The limit should be set to no more than 25% of the actuators maximum slew rate to allow for load effects. Note: The gain will not be reduced to less than 10% of the nominal value. A value of zero will disable this feature.
     // @Range: 0 200
     // @Increment: 0.5
-    // @User: Advanced
-
-    // @Param: PITCH2SRV_PDMX
-    // @DisplayName: Pitch axis controller PD sum maximum
-    // @Description: Pitch axis controller PD sum maximum.  The maximum/minimum value that the sum of the P and D term can output
-    // @Range: 0 4000
-    // @Increment: 10
-    // @Units: d%
-    // @User: Advanced
-
-    // @Param: PITCH2SRV_D_FF
-    // @DisplayName: Pitch Derivative FeedForward Gain
-    // @Description: FF D Gain which produces an output that is proportional to the rate of change of the target
-    // @Range: 0 0.1
-    // @Increment: 0.001
-    // @User: Advanced
-
-    // @Param: PITCH2SRV_NTF
-    // @DisplayName: Pitch Target notch filter index
-    // @Description: Pitch Target notch filter index
-    // @Range: 1 8
-    // @User: Advanced
-
-    // @Param: PITCH2SRV_NEF
-    // @DisplayName: Pitch Error notch filter index
-    // @Description: Pitch Error notch filter index
-    // @Range: 1 8
     // @User: Advanced
 
     GGROUP(pidPitch2Srv,       "PITCH2SRV_", AC_PID),
@@ -474,34 +454,13 @@ const AP_Param::Info Tracker::var_info[] = {
     // @Increment: 0.5
     // @User: Advanced
 
-    // @Param: YAW2SRV_PDMX
-    // @DisplayName: Yaw axis controller PD sum maximum
-    // @Description: Yaw axis controller PD sum maximum.  The maximum/minimum value that the sum of the P and D term can output
-    // @Range: 0 4000
-    // @Increment: 10
-    // @Units: d%
-    // @User: Advanced
-
-    // @Param: YAW2SRV_D_FF
-    // @DisplayName: Yaw Derivative FeedForward Gain
-    // @Description: FF D Gain which produces an output that is proportional to the rate of change of the target
-    // @Range: 0 0.1
-    // @Increment: 0.001
-    // @User: Advanced
-
-    // @Param: YAW2SRV_NTF
-    // @DisplayName: Yaw Target notch filter index
-    // @Description: Yaw Target notch filter index
-    // @Range: 1 8
-    // @User: Advanced
-
-    // @Param: YAW2SRV_NEF
-    // @DisplayName: Yaw Error notch filter index
-    // @Description: Yaw Error notch filter index
-    // @Range: 1 8
-    // @User: Advanced
-
     GGROUP(pidYaw2Srv,         "YAW2SRV_", AC_PID),
+
+#ifdef ENABLE_SCRIPTING
+    // @Group: SCR_
+    // @Path: ../libraries/AP_Scripting/AP_Scripting.cpp
+    GOBJECT(scripting, "SCR_", AP_Scripting),
+#endif
 
     // @Param: CMD_TOTAL
     // @DisplayName: Number of loaded mission items
@@ -518,6 +477,7 @@ const AP_Param::Info Tracker::var_info[] = {
     // @DisplayName: GCS PID tuning mask
     // @Description: bitmask of PIDs to send MAVLink PID_TUNING messages for
     // @User: Advanced
+    // @Values: 0:None,1:Pitch,2:Yaw
     // @Bitmask: 0:Pitch,1:Yaw
     GSCALAR(gcs_pid_mask,           "GCS_PID_MASK",     0),
 
@@ -551,28 +511,25 @@ const AP_Param::Info Tracker::var_info[] = {
     // @User: Standard
     GSCALAR(disarm_pwm,              "SAFE_DISARM_PWM",        0),
 
+    // @Group: STAT
+    // @Path: ../libraries/AP_Stats/AP_Stats.cpp
+    GOBJECT(stats, "STAT",  AP_Stats),
+
     // @Param: AUTO_OPTIONS
     // @DisplayName: Auto mode options
     // @Description: 1: Scan for unknown target
     // @User: Standard
+    // @Values: 0:None, 1: Scan for unknown target in auto mode
     // @Bitmask: 0:Scan for unknown target
     GSCALAR(auto_opts,              "AUTO_OPTIONS",        0),
 
     // @Group:
     // @Path: ../libraries/AP_Vehicle/AP_Vehicle.cpp
-    PARAM_VEHICLE_INFO,
+    { AP_PARAM_GROUP, "", Parameters::k_param_vehicle, (const void *)&tracker, {group_info : AP_Vehicle::var_info} },
 
-#if HAL_NAVEKF2_AVAILABLE
-    // @Group: EK2_
-    // @Path: ../libraries/AP_NavEKF2/AP_NavEKF2.cpp
-    GOBJECTN(ahrs.EKF2, NavEKF2, "EK2_", NavEKF2),
-#endif
-
-#if HAL_NAVEKF3_AVAILABLE
-    // @Group: EK3_
-    // @Path: ../libraries/AP_NavEKF3/AP_NavEKF3.cpp
-    GOBJECTN(ahrs.EKF3, NavEKF3, "EK3_", NavEKF3),
-#endif
+    // @Group: LOG
+    // @Path: ../libraries/AP_Logger/AP_Logger.cpp
+    GOBJECT(logger,           "LOG",  AP_Logger),
 
     AP_VAREND
 };
@@ -580,31 +537,23 @@ const AP_Param::Info Tracker::var_info[] = {
 
 void Tracker::load_parameters(void)
 {
-    AP_Vehicle::load_parameters(g.format_version, Parameters::k_format_version);
+    if (!g.format_version.load() ||
+        g.format_version != Parameters::k_format_version) {
 
-#if AP_STATS_ENABLED
-    // PARAMETER_CONVERSION - Added: Jan-2024
-    AP_Param::convert_class(g.k_param_stats_old, &stats, stats.var_info, 0, true);
-#endif
+        // erase all parameters
+        hal.console->printf("Firmware change: erasing EEPROM...\n");
+        StorageManager::erase();
+        AP_Param::erase_all();
 
-#if AP_SCRIPTING_ENABLED
-    // PARAMETER_CONVERSION - Added: Jan-2024
-    AP_Param::convert_class(g.k_param_scripting_old, &scripting, scripting.var_info, 0, true);
-#endif
+        // save the current format version
+        g.format_version.set_and_save(Parameters::k_format_version);
+        hal.console->printf("done.\n");
+    }
 
-    // PARAMETER_CONVERSION - Added: Feb-2024 for Tracker-4.6
-#if HAL_LOGGING_ENABLED
-    AP_Param::convert_class(g.k_param_logger, &logger, logger.var_info, 0, true);
-#endif
-
-    static const AP_Param::TopLevelObjectConversion toplevel_conversions[] {
-#if AP_SERIALMANAGER_ENABLED
-        // PARAMETER_CONVERSION - Added: Feb-2024 for Tracker-4.6
-        { &serial_manager, serial_manager.var_info, Parameters::k_param_serial_manager_old },
-#endif
-    };
-
-    AP_Param::convert_toplevel_objects(toplevel_conversions, ARRAY_SIZE(toplevel_conversions));
+    uint32_t before = AP_HAL::micros();
+    // Load all auto-loaded EEPROM variables
+    AP_Param::load_all();
+    hal.console->printf("load_all took %luus\n", (unsigned long)(AP_HAL::micros() - before));
 
 #if HAL_HAVE_SAFETY_SWITCH
     // configure safety switch to allow stopping the motors while armed

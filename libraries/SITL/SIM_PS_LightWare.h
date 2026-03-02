@@ -21,12 +21,6 @@
 
 #include "SIM_SerialProximitySensor.h"
 
-#ifndef HAL_SIM_PS_LIGHTWARE_ENABLED
-#define HAL_SIM_PS_LIGHTWARE_ENABLED HAL_SIM_SERIALPROXIMITYSENSOR_ENABLED
-#endif
-
-#if HAL_SIM_PS_LIGHTWARE_ENABLED
-
 #include <stdio.h>
 
 namespace SITL {
@@ -34,12 +28,10 @@ namespace SITL {
 class PS_LightWare : public SerialProximitySensor {
 public:
 
-    using SerialProximitySensor::SerialProximitySensor;
+    PS_LightWare() { }
 
 private:
 
 };
 
 };
-
-#endif  // HAL_SIM_PS_LIGHTWARE_ENABLED

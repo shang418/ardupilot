@@ -18,8 +18,6 @@
 
 #include "SIM_CRRCSim.h"
 
-#if HAL_SIM_CRRCSIM_ENABLED
-
 #include <stdio.h>
 
 #include <AP_HAL/AP_HAL.h>
@@ -156,5 +154,3 @@ void CRRCSim::update(const struct sitl_input &input)
 }
 
 } // namespace SITL
-
-#endif  // HAL_SIM_CRRCSIM_ENABLED

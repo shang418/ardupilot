@@ -72,7 +72,6 @@ import re
 from sys import platform as _platform
 
 is_WSL = bool("Microsoft" in platform.uname()[2])
-is_WSL2 = bool("microsoft-standard-WSL2" in platform.release())
 
 # default list of port names to look for autopilots
 default_ports = ['/dev/serial/by-id/usb-Ardu*',
@@ -84,21 +83,10 @@ default_ports = ['/dev/serial/by-id/usb-Ardu*',
                  '/dev/serial/by-id/usb-Hex_ProfiCNC*',
                  '/dev/serial/by-id/usb-Holybro*',
                  '/dev/serial/by-id/usb-mRo*',
-                 '/dev/serial/by-id/usb-modalFC*',
-                 '/dev/serial/by-id/usb-Auterion*',
-                 '/dev/serial/by-id/usb-*-BL_*',
-                 '/dev/serial/by-id/usb-*_BL_*',
-                 '/dev/serial/by-id/usb-Swift-Flyer*',
-                 '/dev/serial/by-id/usb-CubePilot*',
-                 '/dev/serial/by-id/usb-Qiotek*',
                  '/dev/tty.usbmodem*']
 
 if "cygwin" in _platform or is_WSL:
     default_ports += ['/dev/ttyS*']
-
-if "win32" in _platform:
-    for com_port in range(1, 255):
-        default_ports += ['COM' + str(com_port)]
 
 # Detect python version
 if sys.version_info[0] < 3:
@@ -170,22 +158,16 @@ class firmware(object):
         f.close()
 
         self.image = bytearray(zlib.decompress(base64.b64decode(self.desc['image'])))
-        if 'extf_image' in self.desc:
-            self.extf_image = bytearray(zlib.decompress(base64.b64decode(self.desc['extf_image'])))
-        else:
-            self.extf_image = None
+        self.extf_image = bytearray(zlib.decompress(base64.b64decode(self.desc['extf_image'])))
         # pad image to 4-byte length
         while ((len(self.image) % 4) != 0):
-            self.image += bytes(0xFF)
+            self.image.append('\xff')
         # pad image to 4-byte length
-        if self.extf_image is not None:
-            while ((len(self.extf_image) % 4) != 0):
-                self.extf_image += bytes(0xFF)
+        while ((len(self.extf_image) % 4) != 0):
+            self.extf_image.append('\xff')
 
-    def property(self, propname, default=None):
-        if propname in self.desc:
-            return self.desc[propname]
-        return default
+    def property(self, propname):
+        return self.desc[propname]
 
     def extf_crc(self, size):
         state = crc32(self.extf_image[:size], int(0))
@@ -235,8 +217,6 @@ class uploader(object):
     EXTF_READ_MULTI = b'\x36'     # read bytes at address and increment
     EXTF_GET_CRC    = b'\x37'	  # compute & return a CRC of data in external flash
 
-    CHIP_FULL_ERASE = b'\x40'     # full erase of flash
-
     INFO_BL_REV     = b'\x01'        # bootloader protocol revision
     BL_REV_MIN      = 2              # minimum supported bootloader protocol
     BL_REV_MAX      = 5              # maximum supported bootloader protocol
@@ -260,9 +240,7 @@ class uploader(object):
                  target_system=None,
                  target_component=None,
                  source_system=None,
-                 source_component=None,
-                 no_extf=False,
-                 force_erase=False):
+                 source_component=None):
         self.MAVLINK_REBOOT_ID1 = bytearray(b'\xfe\x21\x72\xff\x00\x4c\x00\x00\x40\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf6\x00\x01\x00\x00\x53\x6b')  # NOQA
         self.MAVLINK_REBOOT_ID0 = bytearray(b'\xfe\x21\x45\xff\x00\x4c\x00\x00\x40\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf6\x00\x00\x00\x00\xcc\x37')  # NOQA
         if target_component is None:
@@ -271,11 +249,9 @@ class uploader(object):
             source_system = 255
         if source_component is None:
             source_component = 1
-        self.no_extf = no_extf
-        self.force_erase = force_erase
 
         # open the port, keep the default timeout short so we can poll quickly
-        self.port = serial.Serial(portname, baudrate_bootloader, timeout=2.0, write_timeout=2.0)
+        self.port = serial.Serial(portname, baudrate_bootloader, timeout=2.0)
         self.baudrate_bootloader = baudrate_bootloader
         if baudrate_bootloader_flash is not None:
             self.baudrate_bootloader_flash = baudrate_bootloader_flash
@@ -449,23 +425,17 @@ class uploader(object):
     # send the CHIP_ERASE command and wait for the bootloader to become ready
     def __erase(self, label):
         print("\n", end='')
-        if self.force_erase:
-            print("Force erasing full chip\n")
-            self.__send(uploader.CHIP_FULL_ERASE +
-                        uploader.EOC)
-        else:
-            self.__send(uploader.CHIP_ERASE +
-                        uploader.EOC)
+        self.__send(uploader.CHIP_ERASE +
+                    uploader.EOC)
 
         # erase is very slow, give it 20s
-        timeout = 20.0
-        deadline = time.time() + timeout
+        deadline = time.time() + 20.0
         while time.time() < deadline:
 
             # Draw progress bar (erase usually takes about 9 seconds to complete)
             estimatedTimeRemaining = deadline-time.time()
             if estimatedTimeRemaining >= 9.0:
-                self.__drawProgressBar(label, timeout-estimatedTimeRemaining, 9.0)
+                self.__drawProgressBar(label, 20.0-estimatedTimeRemaining, 9.0)
             else:
                 self.__drawProgressBar(label, 10.0, 10.0)
                 sys.stdout.write(" (timeout: %d seconds) " % int(deadline-time.time()))
@@ -646,7 +616,7 @@ class uploader(object):
         self.__send(uploader.EXTF_ERASE + size_bytes + uploader.EOC)
         self.__getSync()
         last_pct = 0
-        while True:
+        while(True):
             if last_pct < 90:
                 pct = self.__recv_uint8()
                 if last_pct != pct:
@@ -678,33 +648,10 @@ class uploader(object):
             size_bytes = chr(size)
         print("\n", end='')
         self.__drawProgressBar(label, 1, 100)
-
         expect_crc = fw.extf_crc(size)
         self.__send(uploader.EXTF_GET_CRC +
                     size_bytes + uploader.EOC)
-
-        # crc can be slow, give it 10s
-        deadline = time.time() + 10.0
-        while time.time() < deadline:
-
-            # Draw progress bar
-            estimatedTimeRemaining = deadline-time.time()
-            if estimatedTimeRemaining >= 4.0:
-                self.__drawProgressBar(label, 10.0-estimatedTimeRemaining, 4.0)
-            else:
-                self.__drawProgressBar(label, 5.0, 5.0)
-                sys.stdout.write(" (timeout: %d seconds) " % int(deadline-time.time()))
-                sys.stdout.flush()
-
-            try:
-                report_crc = self.__recv_int()
-                break
-            except Exception:
-                continue
-
-        if time.time() >= deadline:
-            raise RuntimeError("Program CRC timed out")
-
+        report_crc = self.__recv_int()
         self.__getSync()
         if report_crc != expect_crc:
             print("\nExpected 0x%x" % expect_crc)
@@ -723,19 +670,14 @@ class uploader(object):
             print("Unsupported bootloader protocol %d" % self.bl_rev)
             raise RuntimeError("Bootloader protocol mismatch")
 
-        if self.no_extf:
-            self.extf_maxsize = 0
-        else:
-            try:
-                self.extf_maxsize = self.__getInfo(uploader.INFO_EXTF_SIZE)
-            except Exception:
-                print("Could not get external flash size, assuming 0")
-                self.extf_maxsize = 0
-                self.__sync()
-
         self.board_type = self.__getInfo(uploader.INFO_BOARD_ID)
         self.board_rev = self.__getInfo(uploader.INFO_BOARD_REV)
         self.fw_maxsize = self.__getInfo(uploader.INFO_FLASH_SIZE)
+        try:
+            self.extf_maxsize = self.__getInfo(uploader.INFO_EXTF_SIZE)
+        except Exception:
+            print("Could not get external flash size, assuming 0")
+            self.extf_maxsize = 0
 
     def dump_board_info(self):
         # OTP added in v4:
@@ -911,7 +853,7 @@ class uploader(object):
 
         self.dump_board_info()
 
-        if self.fw_maxsize < fw.property('image_size') or self.extf_maxsize < fw.property('extf_image_size', 0):
+        if self.fw_maxsize < fw.property('image_size') or self.extf_maxsize < fw.property('extf_image_size'):
             raise RuntimeError("Firmware image is too large for this board")
 
         if self.baudrate_bootloader_flash != self.baudrate_bootloader:
@@ -920,10 +862,10 @@ class uploader(object):
             self.port.baudrate = self.baudrate_bootloader_flash
             self.__sync()
 
-        if (fw.property('extf_image_size', 0) > 0):
-            self.erase_extflash("Erase ExtF  ", fw.property('extf_image_size', 0))
+        if (fw.property('extf_image_size') > 0):
+            self.erase_extflash("Erase ExtF  ", fw.property('extf_image_size'))
             self.__program_extf("Program ExtF", fw)
-            self.__verify_extf("Verify ExtF ", fw, fw.property('extf_image_size', 0))
+            self.__verify_extf("Verify ExtF ", fw, fw.property('extf_image_size'))
 
         if (fw.property('image_size') > 0):
             self.__erase("Erase  ")
@@ -1007,7 +949,7 @@ def ports_to_try(args):
     if "linux" in _platform or "darwin" in _platform or "cygwin" in _platform:
         import glob
         for pattern in patterns:
-            portlist += sorted(glob.glob(pattern))
+            portlist += glob.glob(pattern)
     else:
         portlist = patterns
 
@@ -1029,15 +971,9 @@ def ports_to_try(args):
 def modemmanager_check():
     if os.path.exists("/usr/sbin/ModemManager"):
         print("""
-===========================================================================================
-WARNING: You should uninstall ModemManager as it conflicts with any non-modem serial device
-===========================================================================================
-""")
-    if os.path.exists("/usr/bin/brltty"):
-        print("""
-=====================================================================================
-WARNING: You should uninstall brltty as it conflicts with any non-modem serial device
-=====================================================================================
+==========================================================================================================
+WARNING: You should uninstall ModemManager as it conflicts with any non-modem serial device (like Pixhawk)
+==========================================================================================================
 """)
 
 
@@ -1120,10 +1056,8 @@ def main():
     )
     parser.add_argument('--download', action='store_true', default=False, help='download firmware from board')
     parser.add_argument('--identify', action="store_true", help="Do not flash firmware; simply dump information about board")
-    parser.add_argument('--no-extf', action="store_true", help="Do not attempt external flash operations")
     parser.add_argument('--erase-extflash', type=lambda x: int(x, 0), default=None,
                         help="Erase sectors containing specified amount of bytes from ext flash")
-    parser.add_argument('--force-erase', action="store_true", help="Do not check for pre cleared flash, always erase the chip")
     parser.add_argument('firmware', nargs="?", action="store", default=None, help="Firmware file to be uploaded")
     args = parser.parse_args()
 
@@ -1160,12 +1094,10 @@ def main():
                                   args.target_system,
                                   args.target_component,
                                   args.source_system,
-                                  args.source_component,
-                                  args.no_extf,
-                                  args.force_erase)
+                                  args.source_component)
 
                 except Exception as e:
-                    if not is_WSL and not is_WSL2 and "win32" not in _platform:
+                    if not is_WSL:
                         # open failed, WSL must cycle through all ttyS* ports quickly but rate limit everything else
                         print("Exception creating uploader: %s" % str(e))
                         time.sleep(0.05)
@@ -1190,8 +1122,8 @@ def main():
                         up.upload(fw, force=args.force, boot_delay=args.boot_delay)
 
                 except RuntimeError as ex:
-                    # print the error and exit as a failure
-                    sys.exit("\nERROR: %s" % ex.args)
+                    # print the error
+                    print("\nERROR: %s" % ex.args)
 
                 except IOError:
                     up.close()

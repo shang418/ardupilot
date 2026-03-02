@@ -1,12 +1,7 @@
 #pragma once
 
-#include "AP_RangeFinder_config.h"
-
-#if AP_RANGEFINDER_TRI2C_ENABLED
-
 #include "AP_RangeFinder.h"
 #include "AP_RangeFinder_Backend.h"
-
 #include <AP_HAL/I2CDevice.h>
 
 class AP_RangeFinder_TeraRangerI2C : public AP_RangeFinder_Backend
@@ -45,5 +40,3 @@ private:
         uint32_t count;
     } accum;
 };
-
-#endif  // AP_RANGEFINDER_TRI2C_ENABLED

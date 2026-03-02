@@ -18,8 +18,6 @@
 
 #include "SIM_last_letter.h"
 
-#if HAL_SIM_LAST_LETTER_ENABLED
-
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -137,5 +135,3 @@ void last_letter::update(const struct sitl_input &input)
 }
 
 } // namespace SITL
-
-#endif  // HAL_SIM_LAST_LETTER_ENABLED

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 export PATH=$HOME/.local/bin:/usr/local/bin:$HOME/prefix/bin:$HOME/gcc/active/bin:$PATH
 export PYTHONUNBUFFERED=1
@@ -8,7 +8,7 @@ cd $HOME/APM || exit 1
 test -n "$FORCEBUILD" || {
 (cd APM && git fetch > /dev/null 2>&1)
 
-newtags=$(cd APM && git fetch --tags --force | wc -l)
+newtags=$(cd APM && git fetch --tags | wc -l)
 oldhash=$(cd APM && git rev-parse origin/master)
 newhash=$(cd APM && git rev-parse HEAD)
 
@@ -28,7 +28,7 @@ lock_file() {
 
         if test -f "$lck" && kill -0 $pid 2> /dev/null; then
 	    LOCKAGE=$(($(date +%s) - $(stat -c '%Y' "build.lck")))
-	    test $LOCKAGE -gt 80000 && {
+	    test $LOCKAGE -gt 60000 && {
                 echo "old lock file $lck is valid for $pid with age $LOCKAGE seconds"
 	    }
             return 1
@@ -52,16 +52,39 @@ lock_file build.lck || {
 (
 date
 
+report() {
+    d="$1"
+    old="$2"
+    new="$3"
+    cat <<EOF | mail -s 'build failed' ardupilot.devel@google.com
+A build of $d failed at `date`
+
+You can view the build logs at https://autotest.ardupilot.org/
+
+A log of the commits since the last attempted build is below
+
+`git log $old $new`
+EOF
+}
+
+report_pull_failure() {
+    d="$1"
+    git show origin/master | mail -s 'APM pull failed' ardupilot.devel@google.com
+    exit 1
+}
+
 oldhash=$(cd APM && git rev-parse HEAD)
 
 echo "Updating APM"
 pushd APM
 git checkout -f master
 git fetch origin
+git submodule update --recursive --force
 git reset --hard origin/master
-Tools/gittools/submodule-sync.sh
+git pull || report_pull_failure
 git clean -f -f -x -d -d
 git tag autotest-$(date '+%Y-%m-%d-%H%M%S') -m "test tag `date`"
+cp ../config.mk .
 popd
 
 rsync -a APM/Tools/autotest/web-firmware/ buildlogs/binaries/
@@ -71,13 +94,13 @@ pushd MAVProxy
 git fetch origin
 git reset --hard origin/master
 git show
-python3 -m pip install --user .
+python setup.py build install --user
 popd
 
 echo "Updating pymavlink"
 pushd APM/modules/mavlink/pymavlink
 git show
-python3 -m pip install --user .
+python setup.py build install --user
 popd
 
 githash=$(cd APM && git rev-parse HEAD)
@@ -100,7 +123,7 @@ export BUILD_BINARIES_PATH=$HOME/build/tmp
 # exit on panic so we don't waste time waiting around
 export SITL_PANIC_EXIT=1
 
-timelimit 144000 python3 APM/Tools/autotest/autotest.py --autotest-server --timeout=143000 > buildlogs/autotest-output.txt 2>&1
+timelimit 32000 APM/Tools/autotest/autotest.py --autotest-server --timeout=30000 > buildlogs/autotest-output.txt 2>&1
 
 mkdir -p "buildlogs/history/$hdate"
 

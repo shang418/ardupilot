@@ -18,8 +18,6 @@
 
 #include "SIM_AirSim.h"
 
-#if HAL_SIM_AIRSIM_ENABLED
-
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -55,14 +53,12 @@ AirSim::AirSim(const char *frame_str) :
 */
 void AirSim::set_interface_ports(const char* address, const int port_in, const int port_out)
 {
-    static const char *port_in_addr = "0.0.0.0";
-
-    if (!sock.bind(port_in_addr, port_in)) {
+	if (!sock.bind("0.0.0.0", port_in)) {
 		printf("Unable to bind Airsim sensor_in socket at port %u - Error: %s\n",
 				 port_in, strerror(errno));
 		return;
 	}
-	printf("Bind SITL sensor input at %s:%u\n", port_in_addr, port_in);
+	printf("Bind SITL sensor input at %s:%u\n", "127.0.0.1", port_in);
 	sock.set_blocking(false);
 	sock.reuseaddress();
 
@@ -336,7 +332,7 @@ void AirSim::recv_fdm(const sitl_input& input)
     }
 
     // Update Rangefinder data, max sensors limit as defined
-    uint8_t rng_sensor_count = MIN(state.rng.rng_distances.length, ARRAY_SIZE(rangefinder_m));
+    uint8_t rng_sensor_count = MIN(state.rng.rng_distances.length, RANGEFINDER_MAX_INSTANCES);
     for (uint8_t i=0; i<rng_sensor_count; i++) {
         rangefinder_m[i] = state.rng.rng_distances.data[i];
     }
@@ -427,5 +423,3 @@ void AirSim::report_FPS(void)
         last_frame_count = state.timestamp;
     }
 }
-
-#endif  // HAL_SIM_AIRSIM_ENABLED

@@ -1,12 +1,11 @@
+#include <AP_HAL/AP_HAL.h>
+
 #include "AP_NavEKF2_core.h"
-
-#include "AP_NavEKF2.h"
-
+#include <AP_Vehicle/AP_Vehicle.h>
 #include <GCS_MAVLink/GCS.h>
 #include <AP_DAL/AP_DAL.h>
-#include <AP_InternalError/AP_InternalError.h>
 
-#if AP_RANGEFINDER_ENABLED
+extern const AP_HAL::HAL& hal;
 
 
 /********************************************************
@@ -40,7 +39,7 @@ void NavEKF2_core::readRangeFinder(void)
         // store samples and sample time into a ring buffer if valid
         // use data from two range finders if available
 
-        for (uint8_t sensorIndex = 0; sensorIndex < ARRAY_SIZE(rngMeasIndex); sensorIndex++) {
+        for (uint8_t sensorIndex = 0; sensorIndex <= 1; sensorIndex++) {
             auto *sensor = _rng->get_backend(sensorIndex);
             if (sensor == nullptr) {
                 continue;
@@ -57,7 +56,7 @@ void NavEKF2_core::readRangeFinder(void)
             }
 
             // check for three fresh samples
-            bool sampleFresh[DOWNWARD_RANGEFINDER_MAX_INSTANCES][3] = {};
+            bool sampleFresh[2][3] = {};
             for (uint8_t index = 0; index <= 2; index++) {
                 sampleFresh[sensorIndex][index] = (imuSampleTime_ms - storedRngMeasTime_ms[sensorIndex][index]) < 500;
             }
@@ -111,11 +110,10 @@ void NavEKF2_core::readRangeFinder(void)
         }
     }
 }
-#endif
 
 // write the raw optical flow measurements
 // this needs to be called externally.
-void NavEKF2_core::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f &rawFlowRates, const Vector2f &rawGyroRates, const uint32_t msecFlowMeas, const Vector3f &posOffset, float heightOverride)
+void NavEKF2_core::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f &rawFlowRates, const Vector2f &rawGyroRates, const uint32_t msecFlowMeas, const Vector3f &posOffset)
 {
     // The raw measurements need to be optical flow rates in radians/second averaged across the time since the last update
     // The PX4Flow sensor outputs flow rates with the following axis and sign conventions:
@@ -160,8 +158,6 @@ void NavEKF2_core::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f
         ofDataNew.flowRadXY = (-rawFlowRates).toftype(); // raw (non motion compensated) optical flow angular rate about the X axis (rad/sec)
         // write the flow sensor position in body frame
         ofDataNew.body_offset = posOffset.toftype();
-        // write the flow sensor height override
-        ofDataNew.heightOverride = heightOverride;
         // write flow rate measurements corrected for body rates
         ofDataNew.flowRadXYcomp.x = ofDataNew.flowRadXY.x + ofDataNew.bodyRadXYZ.x;
         ofDataNew.flowRadXYcomp.y = ofDataNew.flowRadXY.y + ofDataNew.bodyRadXYZ.y;
@@ -337,13 +333,13 @@ void NavEKF2_core::readIMUData()
     if (ins.use_accel(imu_index)) {
         accel_active = imu_index;
     } else {
-        accel_active = ins.get_first_usable_accel();
+        accel_active = ins.get_primary_accel();
     }
 
     if (ins.use_gyro(imu_index)) {
         gyro_active = imu_index;
     } else {
-        gyro_active = ins.get_first_usable_gyro();
+        gyro_active = ins.get_primary_gyro();
     }
 
     if (gyro_active != gyro_index_active) {
@@ -596,7 +592,7 @@ void NavEKF2_core::readGpsData()
             }
 
             // Read the GPS location in WGS-84 lat,long,height coordinates
-            const Location &gpsloc = gps.location();
+            const struct Location &gpsloc = gps.location();
 
             // Set the EKF origin and magnetic field declination if not previously set  and GPS checks have passed
             if (gpsGoodToAlign && !validOrigin) {
@@ -739,7 +735,7 @@ void NavEKF2_core::correctEkfOriginHeight()
     } else if (activeHgtSource == HGT_SOURCE_RNG) {
         // use the worse case expected terrain gradient and vehicle horizontal speed
         const ftype maxTerrGrad = 0.25f;
-        ekfOriginHgtVar += sq(maxTerrGrad * stateStruct.velocity.xy().length() * deltaTime);
+        ekfOriginHgtVar += sq(maxTerrGrad * norm(stateStruct.velocity.x , stateStruct.velocity.y) * deltaTime);
     } else {
         // by definition our height source is absolute so cannot run this filter
         return;
@@ -799,7 +795,6 @@ void NavEKF2_core::readAirSpdData()
 *              Range Beacon Measurements                *
 ********************************************************/
 
-#if AP_BEACON_ENABLED
 // check for new range beacon data and push to data buffer if available
 void NavEKF2_core::readRngBcnData()
 {
@@ -906,7 +901,6 @@ void NavEKF2_core::readRngBcnData()
     rngBcnDataToFuse = storedRangeBeacon.recall(rngBcnDataDelayed,imuDataDelayed.time_ms);
 
 }
-#endif  // AP_BEACON_ENABLED
 
 /*
   update timing statistics structure

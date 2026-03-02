@@ -12,14 +12,15 @@ public:
     using AP_Avoidance::AP_Avoidance;
 
     /* Do not allow copies */
-    CLASS_NO_COPY(AP_Avoidance_Copter);
+    AP_Avoidance_Copter(const AP_Avoidance_Copter &other) = delete;
+    AP_Avoidance_Copter &operator=(const AP_Avoidance_Copter&) = delete;
 
 private:
     // helper function to set modes and always succeed
     void set_mode_else_try_RTL_else_LAND(Mode::Number mode);
 
     // get minimum limit altitude allowed on descend
-    int32_t get_altitude_minimum() const;
+    int16_t get_altitude_minimum() const;
 
 protected:
     // override avoidance handler

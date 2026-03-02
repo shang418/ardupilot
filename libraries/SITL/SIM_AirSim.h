@@ -18,15 +18,7 @@
 
 #pragma once
 
-#include <AP_HAL/AP_HAL_Boards.h>
-
-#ifndef HAL_SIM_AIRSIM_ENABLED
-#define HAL_SIM_AIRSIM_ENABLED (CONFIG_HAL_BOARD == HAL_BOARD_SITL)
-#endif
-
-#if HAL_SIM_AIRSIM_ENABLED
-
-#include <AP_HAL/utility/Socket_native.h>
+#include <AP_HAL/utility/Socket.h>
 #include "SIM_Aircraft.h"
 
 namespace SITL {
@@ -44,7 +36,7 @@ public:
 
 	/* static object creator */
     static Aircraft *create(const char *frame_str) {
-        return NEW_NOTHROW AirSim(frame_str);
+        return new AirSim(frame_str);
     }
 
     /*  Create and set in/out socket for Airsim simulator */
@@ -78,7 +70,7 @@ private:
 	// connection_info_.sitl_ip_port
 	uint16_t airsim_control_port = 9002;
 
-    SocketAPM_native sock;
+	SocketAPM sock;
 
     double average_frame_time;
     uint64_t frame_counter;
@@ -158,5 +150,3 @@ private:
 };
 
 }
-
-#endif  // HAL_SIM_AIRSIM_ENABLED

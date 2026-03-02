@@ -1,10 +1,7 @@
 #pragma once
 
-#define AP_PARAM_VEHICLE_NAME blimp
-
 #include <AP_Common/AP_Common.h>
 #include "RC_Channel.h"
-#include <SRV_Channel/SRV_Channel.h>
 
 // Global parameter class.
 //
@@ -87,7 +84,7 @@ public:
         k_param_log_bitmask,
         k_param_throttle_filt,
         k_param_throttle_behavior,
-        k_param_pilot_takeoff_alt, //unused
+        k_param_pilot_takeoff_alt,
 
         // AP_ADSB Library
         k_param_adsb,
@@ -110,7 +107,6 @@ public:
         k_param_max_pos_yaw,
         k_param_simple_mode,
         k_param_dis_mask,
-        k_param_pid_dz,
 
         //
         // 90: misc2
@@ -134,9 +130,9 @@ public:
         k_param_sysid_my_gcs,
         k_param_telem_delay,
         k_param_gcs2,
-        k_param_serial_manager_old,
+        k_param_serial_manager,
         k_param_gcs3,
-        k_param_gcs_pid_mask,
+        k_param_gcs_pid_mask,    // 126
         k_param_gcs4,
         k_param_gcs5,
         k_param_gcs6,
@@ -152,7 +148,7 @@ public:
         // 140: Sensor parameters
         //
         k_param_compass,
-        k_param_frame_type, //unused
+        k_param_frame_type,
         k_param_ahrs, // AHRS group // 159
 
         //
@@ -174,7 +170,7 @@ public:
         //
         k_param_failsafe_throttle = 170,
         k_param_failsafe_throttle_value,
-        k_param_radio_tuning, // unused
+        k_param_radio_tuning,
         k_param_rc_speed = 192,
         k_param_failsafe_gcs,
         k_param_rcmap, // 199
@@ -214,6 +210,7 @@ public:
 
     AP_Float        throttle_filt;
     AP_Int16        throttle_behavior;
+    AP_Float        pilot_takeoff_alt;
 
     AP_Int8         failsafe_gcs;               // ground station failsafe behavior
     AP_Int16        gps_hdop_good;              // GPS Hdop value at or below this value represent a good position
@@ -238,6 +235,8 @@ public:
     // Misc
     //
     AP_Int32        log_bitmask;
+    AP_Int8         radio_tuning;
+    AP_Int8         frame_type;
     AP_Int8         disarm_delay;
 
     AP_Int8         fs_ekf_action;
@@ -254,7 +253,6 @@ public:
 
     AP_Int8         simple_mode;
     AP_Int16        dis_mask;
-    AP_Float        pid_dz;
 
     AP_Int8         rtl_alt_type;
 
@@ -281,6 +279,11 @@ public:
     // altitude at which nav control can start in takeoff
     AP_Float wp_navalt_min;
 
+#if STATS_ENABLED == ENABLED
+    // vehicle statistics
+    AP_Stats stats;
+#endif
+
     // whether to enforce acceptance of packets only from sysid_my_gcs
     AP_Int8 sysid_enforce;
 
@@ -304,6 +307,14 @@ public:
 
     // Land alt final stage
     AP_Int16 land_alt_low;
+
+
+#ifdef ENABLE_SCRIPTING
+    AP_Scripting scripting;
+#endif // ENABLE_SCRIPTING
+
+    AP_Float tuning_min;
+    AP_Float tuning_max;
 
     // vibration failsafe enable/disable
     AP_Int8 fs_vibe_enabled;

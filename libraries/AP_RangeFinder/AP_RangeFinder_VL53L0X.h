@@ -1,9 +1,5 @@
 #pragma once
 
-#include "AP_RangeFinder_config.h"
-
-#if AP_RANGEFINDER_VL53L0X_ENABLED
-
 #include "AP_RangeFinder.h"
 #include "AP_RangeFinder_Backend.h"
 #include <AP_HAL/I2CDevice.h>
@@ -84,5 +80,3 @@ private:
     uint32_t sum_mm;
     uint32_t counter;
 };
-
-#endif  // AP_RANGEFINDER_VL53L0X_ENABLED

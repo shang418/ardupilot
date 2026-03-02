@@ -13,12 +13,10 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 /*
-  Base class for CRSF telemetry
+  Base class for CRSF telemetery
 */
 
 #include "SIM_CRSF.h"
-
-#if AP_SIM_CRSF_ENABLED
 
 using namespace SITL;
 
@@ -82,5 +80,3 @@ void CRSF::update()
         return;
     }
 }
-
-#endif  // AP_SIM_CRSF_ENABLED

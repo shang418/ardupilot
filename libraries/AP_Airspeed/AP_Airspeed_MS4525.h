@@ -14,15 +14,12 @@
  */
 #pragma once
 
-#include "AP_Airspeed_config.h"
-
-#if AP_AIRSPEED_MS4525_ENABLED
-
 /*
   backend driver for airspeed from I2C
  */
 
 #include <AP_HAL/AP_HAL.h>
+#include <AP_Param/AP_Param.h>
 #include <AP_HAL/utility/OwnPtr.h>
 #include <AP_HAL/I2CDevice.h>
 #include <utility>
@@ -64,5 +61,3 @@ private:
 
     bool probe(uint8_t bus, uint8_t address);
 };
-
-#endif  // AP_AIRSPEED_MS4525_ENABLED

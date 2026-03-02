@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Contains functions used to test the ArduPilot examples
 
@@ -51,7 +53,7 @@ def run_example(filepath, valgrind=False, gdb=False):
 
 
 def run_examples(debug=False, valgrind=False, gdb=False):
-    dirpath = util.reltopdir(os.path.join('build', 'sitl', 'examples'))
+    dirpath = util.reltopdir(os.path.join('build', 'linux', 'examples'))
 
     print("Running Hello")
     # explicitly run helloworld and check for output

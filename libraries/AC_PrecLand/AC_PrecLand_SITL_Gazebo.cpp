@@ -3,7 +3,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#if AC_PRECLAND_SITL_GAZEBO_ENABLED
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 
 // Constructor
 AC_PrecLand_SITL_Gazebo::AC_PrecLand_SITL_Gazebo(const AC_PrecLand& frontend, AC_PrecLand::precland_state& state)
@@ -35,4 +35,24 @@ void AC_PrecLand_SITL_Gazebo::update()
     _have_los_meas = _have_los_meas && AP_HAL::millis()-_los_meas_time_ms <= 1000;
 }
 
-#endif  // AC_PRECLAND_SITL_GAZEBO_ENABLED
+// provides a unit vector towards the target in body frame
+//  returns same as have_los_meas()
+bool AC_PrecLand_SITL_Gazebo::get_los_body(Vector3f& ret) {
+    if (have_los_meas()) {
+        ret = _los_meas_body;
+        return true;
+    }
+    return false;
+}
+
+// returns system time in milliseconds of last los measurement
+uint32_t AC_PrecLand_SITL_Gazebo::los_meas_time_ms() {
+    return _los_meas_time_ms;
+}
+
+// return true if there is a valid los measurement available
+bool AC_PrecLand_SITL_Gazebo::have_los_meas() {
+    return _have_los_meas;
+}
+
+#endif

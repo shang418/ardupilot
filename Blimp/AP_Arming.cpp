@@ -1,5 +1,21 @@
 #include "Blimp.h"
 
+
+// performs pre-arm checks. expects to be called at 1hz.
+void AP_Arming_Blimp::update(void)
+{
+    // perform pre-arm checks & display failures every 30 seconds
+    static uint8_t pre_arm_display_counter = PREARM_DISPLAY_PERIOD/2;
+    pre_arm_display_counter++;
+    bool display_fail = false;
+    if (pre_arm_display_counter >= PREARM_DISPLAY_PERIOD) {
+        display_fail = true;
+        pre_arm_display_counter = 0;
+    }
+
+    pre_arm_checks(display_fail);
+}
+
 bool AP_Arming_Blimp::pre_arm_checks(bool display_failure)
 {
     const bool passed = run_pre_arm_checks(display_failure);
@@ -29,11 +45,10 @@ bool AP_Arming_Blimp::run_pre_arm_checks(bool display_failure)
         return mandatory_checks(display_failure);
     }
 
-    return parameter_checks(display_failure)
-#if AP_FENCE_ENABLED
-           & fence_checks(display_failure)
-#endif
+    return fence_checks(display_failure)
+           & parameter_checks(display_failure)
            & motor_checks(display_failure)
+           & pilot_throttle_checks(display_failure)
            & gcs_failsafe_check(display_failure)
            & alt_checks(display_failure)
            & AP_Arming::pre_arm_checks(display_failure);
@@ -47,14 +62,14 @@ bool AP_Arming_Blimp::barometer_checks(bool display_failure)
 
     bool ret = true;
     // check Baro
-    if (check_enabled(ARMING_CHECK_BARO)) {
+    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_BARO)) {
         // Check baro & inav alt are within 1m if EKF is operating in an absolute position mode.
         // Do not check if intending to operate in a ground relative height mode as EKF will output a ground relative height
         // that may differ from the baro height due to baro drift.
         nav_filter_status filt_status = blimp.inertial_nav.get_filter_status();
         bool using_baro_ref = (!filt_status.flags.pred_horiz_pos_rel && filt_status.flags.pred_horiz_pos_abs);
         if (using_baro_ref) {
-            if (fabsf(blimp.inertial_nav.get_position_z_up_cm() - blimp.baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
+            if (fabsf(blimp.inertial_nav.get_altitude() - blimp.baro_alt) > PREARM_MAX_ALT_DISPARITY_CM) {
                 check_failed(ARMING_CHECK_BARO, display_failure, "Altitude disparity");
                 ret = false;
             }
@@ -67,7 +82,7 @@ bool AP_Arming_Blimp::ins_checks(bool display_failure)
 {
     bool ret = AP_Arming::ins_checks(display_failure);
 
-    if (check_enabled(ARMING_CHECK_INS)) {
+    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_INS)) {
 
         // get ekf attitude (if bad, it's usually the gyro biases)
         if (!pre_arm_ekf_attitude_check()) {
@@ -86,7 +101,7 @@ bool AP_Arming_Blimp::board_voltage_checks(bool display_failure)
     }
 
     // check battery voltage
-    if (check_enabled(ARMING_CHECK_VOLTAGE)) {
+    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_VOLTAGE)) {
         if (blimp.battery.has_failsafed()) {
             check_failed(ARMING_CHECK_VOLTAGE, display_failure, "Battery failsafe");
             return false;
@@ -104,12 +119,12 @@ bool AP_Arming_Blimp::board_voltage_checks(bool display_failure)
 bool AP_Arming_Blimp::parameter_checks(bool display_failure)
 {
     // check various parameter values
-    if (check_enabled(ARMING_CHECK_PARAMETERS)) {
+    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_PARAMETERS)) {
 
         // failsafe parameter checks
         if (blimp.g.failsafe_throttle) {
             // check throttle min is above throttle failsafe trigger and that the trigger is above ppm encoder's loss-of-signal value of 900
-            if (blimp.channel_up->get_radio_min() <= blimp.g.failsafe_throttle_value+10 || blimp.g.failsafe_throttle_value < 910) {
+            if (blimp.channel_down->get_radio_min() <= blimp.g.failsafe_throttle_value+10 || blimp.g.failsafe_throttle_value < 910) {
                 check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Check FS_THR_VALUE");
                 return false;
             }
@@ -131,6 +146,21 @@ bool AP_Arming_Blimp::motor_checks(bool display_failure)
     // further checks enabled with parameters
     if (!check_enabled(ARMING_CHECK_PARAMETERS)) {
         return true;
+    }
+
+    return true;
+}
+
+bool AP_Arming_Blimp::pilot_throttle_checks(bool display_failure)
+{
+    // check throttle is above failsafe throttle
+    // this is near the bottom to allow other failures to be displayed before checking pilot throttle
+    if ((checks_to_perform == ARMING_CHECK_ALL) || (checks_to_perform & ARMING_CHECK_RC)) {
+        if (blimp.g.failsafe_throttle != FS_THR_DISABLED && blimp.channel_down->get_radio_in() < blimp.g.failsafe_throttle_value) {
+            const char *failmsg = "Throttle below Failsafe";
+            check_failed(ARMING_CHECK_RC, display_failure, "%s", failmsg);
+            return false;
+        }
     }
 
     return true;
@@ -161,7 +191,7 @@ bool AP_Arming_Blimp::gps_checks(bool display_failure)
     }
 
     // return true immediately if gps check is disabled
-    if (!check_enabled(ARMING_CHECK_GPS)) {
+    if (!(checks_to_perform == ARMING_CHECK_ALL || checks_to_perform & ARMING_CHECK_GPS)) {
         AP_Notify::flags.pre_arm_gps_check = true;
         return true;
     }
@@ -273,7 +303,7 @@ bool AP_Arming_Blimp::mandatory_checks(bool display_failure)
         result = false;
     }
 
-    return result & AP_Arming::mandatory_checks(display_failure);
+    return result;
 }
 
 void AP_Arming_Blimp::set_pre_arm_check(bool b)
@@ -304,10 +334,8 @@ bool AP_Arming_Blimp::arm(const AP_Arming::Method method, const bool do_arming_c
         return false;
     }
 
-#if HAL_LOGGING_ENABLED
     // let logger know that we're armed (it may open logs e.g.)
     AP::logger().set_vehicle_armed(true);
-#endif
 
     // notify that arming will occur (we do this early to give plenty of warning)
     AP_Notify::flags.armed = true;
@@ -316,7 +344,7 @@ bool AP_Arming_Blimp::arm(const AP_Arming::Method method, const bool do_arming_c
         AP::notify().update();
     }
 
-    send_arm_disarm_statustext("Arming motors"); //MIR kept in - usually only in SITL
+    gcs().send_text(MAV_SEVERITY_INFO, "Arming motors"); //MIR kept in - usually only in SITL
 
     auto &ahrs = AP::ahrs();
 
@@ -325,7 +353,7 @@ bool AP_Arming_Blimp::arm(const AP_Arming::Method method, const bool do_arming_c
     if (!ahrs.home_is_set()) {
         // Reset EKF altitude if home hasn't been set yet (we use EKF altitude as substitute for alt above home)
         ahrs.resetHeightDatum();
-        LOGGER_WRITE_EVENT(LogEvent::EKF_ALT_RESET);
+        AP::logger().Write_Event(LogEvent::EKF_ALT_RESET);
 
         // we have reset height, so arming height is zero
         blimp.arming_altitude_m = 0;
@@ -336,7 +364,7 @@ bool AP_Arming_Blimp::arm(const AP_Arming::Method method, const bool do_arming_c
         }
 
         // remember the height when we armed
-        blimp.arming_altitude_m = blimp.inertial_nav.get_position_z_up_cm() * 0.01;
+        blimp.arming_altitude_m = blimp.inertial_nav.get_altitude() * 0.01;
     }
 
     hal.util->set_soft_armed(true);
@@ -344,10 +372,8 @@ bool AP_Arming_Blimp::arm(const AP_Arming::Method method, const bool do_arming_c
     // finally actually arm the motors
     blimp.motors->armed(true);
 
-#if HAL_LOGGING_ENABLED
     // log flight mode in case it was changed while vehicle was disarmed
     AP::logger().Write_Mode((uint8_t)blimp.control_mode, blimp.control_mode_reason);
-#endif
 
     // perf monitor ignores delay due to arming
     AP::scheduler().perf_info.ignore_this_loop();
@@ -377,7 +403,8 @@ bool AP_Arming_Blimp::disarm(const AP_Arming::Method method, bool do_disarm_chec
         return false;
     }
 
-    send_arm_disarm_statustext("Disarming motors"); //MIR keeping in - usually only in SITL
+    gcs().send_text(MAV_SEVERITY_INFO, "Disarming motors"); //MIR keeping in - usually only in SITL
+
 
     auto &ahrs = AP::ahrs();
 
@@ -395,9 +422,7 @@ bool AP_Arming_Blimp::disarm(const AP_Arming::Method method, bool do_disarm_chec
     // send disarm command to motors
     blimp.motors->armed(false);
 
-#if HAL_LOGGING_ENABLED
     AP::logger().set_vehicle_armed(false);
-#endif
 
     hal.util->set_soft_armed(false);
 

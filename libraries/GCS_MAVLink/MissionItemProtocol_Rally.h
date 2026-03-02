@@ -1,9 +1,5 @@
 #pragma once
 
-#include <AP_Rally/AP_Rally.h>
-
-#if HAL_RALLY_ENABLED
-
 #include "MissionItemProtocol.h"
 
 class MissionItemProtocol_Rally : public MissionItemProtocol {
@@ -20,9 +16,7 @@ public:
       static function to get rally item as mavlink_mission_item_int_t
     */
     static bool get_item_as_mission_item(uint16_t seq, mavlink_mission_item_int_t &ret_packet);
-
-    static MAV_MISSION_RESULT convert_MISSION_ITEM_INT_to_RallyLocation(const mavlink_mission_item_int_t &cmd, class RallyLocation &ret) WARN_IF_UNUSED;
-
+    
 protected:
 
     ap_message next_item_ap_message_id() const override {
@@ -44,6 +38,6 @@ private:
                                 const mavlink_mission_request_int_t &packet,
                                 mavlink_mission_item_int_t &ret_packet) override WARN_IF_UNUSED;
 
-};
+    static MAV_MISSION_RESULT convert_MISSION_ITEM_INT_to_RallyLocation(const mavlink_mission_item_int_t &cmd, class RallyLocation &ret) WARN_IF_UNUSED;
 
-#endif  // HAL_RALLY_ENABLED
+};

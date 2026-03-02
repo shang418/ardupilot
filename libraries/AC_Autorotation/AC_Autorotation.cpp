@@ -3,7 +3,9 @@
 #include <AP_RPM/AP_RPM.h>
 #include <AP_AHRS/AP_AHRS.h>
 
-// Autorotation controller defaults
+//Autorotation controller defaults
+#define AROT_BAIL_OUT_TIME                            2.0f     // Default time for bail out controller to run (unit: s)
+
 // Head Speed (HS) controller specific default definitions
 #define HS_CONTROLLER_COLLECTIVE_CUTOFF_FREQ          2.0f     // low-pass filter on accel error (unit: hz)
 #define HS_CONTROLLER_HEADSPEED_P                     0.7f     // Default P gain for head speed controller (unit: -)
@@ -79,6 +81,15 @@ const AP_Param::GroupInfo AC_Autorotation::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("AS_ACC_MAX", 7, AC_Autorotation, _param_accel_max, FWD_SPD_CONTROLLER_MAX_ACCEL),
 
+    // @Param: BAIL_TIME
+    // @DisplayName: Bail Out Timer
+    // @Description: Time in seconds from bail out initiated to the exit of autorotation flight mode.
+    // @Units: s
+    // @Range: 0.5 4
+    // @Increment: 0.1
+    // @User: Advanced
+    AP_GROUPINFO("BAIL_TIME", 8, AC_Autorotation, _param_bail_time, AROT_BAIL_OUT_TIME),
+
     // @Param: HS_SENSOR
     // @DisplayName: Main Rotor RPM Sensor 
     // @Description: Allocate the RPM sensor instance to use for measuring head speed.  RPM1 = 0.  RPM2 = 1.
@@ -86,15 +97,15 @@ const AP_Param::GroupInfo AC_Autorotation::var_info[] = {
     // @Range: 0.5 3
     // @Increment: 0.1
     // @User: Advanced
-    AP_GROUPINFO("HS_SENSOR", 8, AC_Autorotation, _param_rpm_instance, 0),
+    AP_GROUPINFO("HS_SENSOR", 9, AC_Autorotation, _param_rpm_instance, 0),
 
     // @Param: FW_V_P
     // @DisplayName: Velocity (horizontal) P gain
-    // @Description: Velocity (horizontal) P gain.  Determines the proportion of the target acceleration based on the velocity error.
+    // @Description: Velocity (horizontal) P gain.  Determines the propotion of the target acceleration based on the velocity error.
     // @Range: 0.1 6.0
     // @Increment: 0.1
     // @User: Advanced
-    AP_SUBGROUPINFO(_p_fw_vel, "FW_V_", 9, AC_Autorotation, AC_P),
+    AP_SUBGROUPINFO(_p_fw_vel, "FW_V_", 10, AC_Autorotation, AC_P),
 
     // @Param: FW_V_FF
     // @DisplayName: Velocity (horizontal) feed forward
@@ -102,7 +113,7 @@ const AP_Param::GroupInfo AC_Autorotation::var_info[] = {
     // @Range: 0 1
     // @Increment: 0.01
     // @User: Advanced
-    AP_GROUPINFO("FW_V_FF", 10, AC_Autorotation, _param_fwd_k_ff, AP_FW_VEL_FF),
+    AP_GROUPINFO("FW_V_FF", 11, AC_Autorotation, _param_fwd_k_ff, AP_FW_VEL_FF),
 
     AP_GROUPEND
 };
@@ -132,7 +143,7 @@ void AC_Autorotation::init_hs_controller()
     _healthy_rpm_counter = 0;
 
     // Protect against divide by zero
-    _param_head_speed_set_point.set(MAX(_param_head_speed_set_point,500));
+    _param_head_speed_set_point = MAX(_param_head_speed_set_point,500);
 }
 
 
@@ -142,7 +153,7 @@ bool AC_Autorotation::update_hs_glide_controller(float dt)
     _flags.bad_rpm = false;
     _flags.bad_rpm_warning = false;
 
-    // Get current rpm and update healthy signal counters
+    // Get current rpm and update healthly signal counters
     _current_rpm = get_rpm(true);
 
     if (_unhealthy_rpm_counter <=30) {
@@ -193,23 +204,22 @@ void AC_Autorotation::set_collective(float collective_filter_cutoff) const
 //before using it in the controller
 float AC_Autorotation::get_rpm(bool update_counter)
 {
-    float current_rpm = 0.0f;
-
-#if AP_RPM_ENABLED
     // Get singleton for RPM library
     const AP_RPM *rpm = AP_RPM::get_singleton();
+
+    float current_rpm = 0.0f;
 
     //Get current rpm, checking to ensure no nullptr
     if (rpm != nullptr) {
         //Check requested rpm instance to ensure either 0 or 1.  Always defaults to 0.
         if ((_param_rpm_instance > 1) || (_param_rpm_instance < 0)) {
-            _param_rpm_instance.set(0);
+            _param_rpm_instance = 0;
         }
 
         //Get RPM value
         uint8_t instance = _param_rpm_instance;
 
-        //Check RPM sensor is returning a healthy status
+        //Check RPM sesnor is returning a healthy status
         if (!rpm->get_rpm(instance, current_rpm) || current_rpm <= -1) {
             //unhealthy, rpm unreliable
             _flags.bad_rpm = true;
@@ -218,9 +228,6 @@ float AC_Autorotation::get_rpm(bool update_counter)
     } else {
         _flags.bad_rpm = true;
     }
-#else
-    _flags.bad_rpm = true;
-#endif
 
     if (_flags.bad_rpm) {
         //count unhealthy rpm updates and reset healthy rpm counter
@@ -241,7 +248,6 @@ float AC_Autorotation::get_rpm(bool update_counter)
 }
 
 
-#if HAL_LOGGING_ENABLED
 void AC_Autorotation::Log_Write_Autorotation(void) const
 {
 // @LoggerMessage: AROT
@@ -279,7 +285,7 @@ void AC_Autorotation::Log_Write_Autorotation(void) const
                         (double)_accel_target,
                         (double)_pitch_target);
 }
-#endif  // HAL_LOGGING_ENABLED
+
 
 // Initialise forward speed controller
 void AC_Autorotation::init_fwd_spd_controller(void)
@@ -312,7 +318,7 @@ void AC_Autorotation::update_forward_speed_controller(void)
     _delta_speed_fwd = _speed_forward - _speed_forward_last; //(cm/s)
     _speed_forward_last = _speed_forward; //(cm/s)
 
-    // Limiting the target velocity based on the max acceleration limit
+    // Limitng the target velocity based on the max acceleration limit
     if (_cmd_vel < _vel_target) {
         _cmd_vel += _accel_max * _dt;
         if (_cmd_vel > _vel_target) {
@@ -360,7 +366,7 @@ void AC_Autorotation::update_forward_speed_controller(void)
     _accel_out_last = _accel_out;
 
     // update angle targets that will be passed to stabilize controller
-    _pitch_target = accel_to_angle(-_accel_out*0.01) * 100;
+    _pitch_target = atanf(-_accel_out/(GRAVITY_MSS * 100.0f))*(18000.0f/M_PI);
 
 }
 

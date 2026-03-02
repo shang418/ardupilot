@@ -8,7 +8,7 @@ void Sub::read_inertia()
 
     // pull position from ahrs
     Location loc;
-    ahrs.get_location(loc);
+    ahrs.get_position(loc);
     current_loc.lat = loc.lat;
     current_loc.lng = loc.lng;
 
@@ -17,9 +17,9 @@ void Sub::read_inertia()
         return;
     }
 
-    current_loc.alt = inertial_nav.get_position_z_up_cm();
+    current_loc.alt = inertial_nav.get_altitude();
 
     // get velocity, altitude is always absolute frame, referenced from
     // water's surface
-    climb_rate = inertial_nav.get_velocity_z_up_cms();
+    climb_rate = inertial_nav.get_velocity_z();
 }

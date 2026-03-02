@@ -13,9 +13,6 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "AP_RangeFinder_LightWareI2C.h"
-
-#if AP_RANGEFINDER_LWI2C_ENABLED
-
 #include <AP_HAL/AP_HAL.h>
 #include <AP_HAL/utility/sparse-endian.h>
 
@@ -81,7 +78,7 @@ AP_RangeFinder_Backend *AP_RangeFinder_LightWareI2C::detect(RangeFinder::RangeFi
     }
 
     AP_RangeFinder_LightWareI2C *sensor
-        = NEW_NOTHROW AP_RangeFinder_LightWareI2C(_state, _params, std::move(dev));
+        = new AP_RangeFinder_LightWareI2C(_state, _params, std::move(dev));
 
     if (!sensor) {
         return nullptr;
@@ -191,14 +188,14 @@ void AP_RangeFinder_LightWareI2C::sf20_get_version(const char* send_msg, const c
 bool AP_RangeFinder_LightWareI2C::init()
 {
     if (sf20_init()) {
-        DEV_PRINTF("Found SF20 native Lidar\n");
+        hal.console->printf("Found SF20 native Lidar\n");
         return true;
     }
     if (legacy_init()) {
-        DEV_PRINTF("Found SF20 legacy Lidar\n");
+        hal.console->printf("Found SF20 legacy Lidar\n");
         return true;
     }
-    DEV_PRINTF("SF20 not found\n");
+    hal.console->printf("SF20 not found\n");
     return false;
 }
 
@@ -245,7 +242,7 @@ bool AP_RangeFinder_LightWareI2C::sf20_init()
     sf20_get_version("?P\r\n", "p:", version);
 
     if (version[0]) {
-        DEV_PRINTF("SF20 Lidar version %s\n", version);
+        hal.console->printf("SF20 Lidar version %s\n", version);
     }
 
     // Makes sure that "address tagging" is turned off.
@@ -340,7 +337,7 @@ bool AP_RangeFinder_LightWareI2C::sf20_init()
 }
 
 // read - return last value measured by sensor
-bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
+bool AP_RangeFinder_LightWareI2C::legacy_get_reading(uint16_t &reading_cm)
 {
     be16_t val;
 
@@ -351,9 +348,9 @@ bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
         int16_t signed_val = int16_t(be16toh(val));
         if (signed_val < 0) {
             // some lidar firmwares will return 65436 for out of range
-            reading_m = uint16_t(max_distance_cm() + LIGHTWARE_OUT_OF_RANGE_ADD_CM) * 0.01f;
+            reading_cm = uint16_t(max_distance_cm() + LIGHTWARE_OUT_OF_RANGE_ADD_CM);
         } else {
-            reading_m = uint16_t(signed_val) * 0.01f;
+            reading_cm = uint16_t(signed_val);
         }
         return true;
     }
@@ -361,7 +358,7 @@ bool AP_RangeFinder_LightWareI2C::legacy_get_reading(float &reading_m)
 }
 
 // read - return last value measured by sf20 sensor
-bool AP_RangeFinder_LightWareI2C::sf20_get_reading(float &reading_m)
+bool AP_RangeFinder_LightWareI2C::sf20_get_reading(uint16_t &reading_cm)
 {
     // Parses up to 5 ASCII streams for LiDAR data.
     // If a parse fails, the stream measurement is not updated until it is successfully read in the future.
@@ -381,7 +378,7 @@ bool AP_RangeFinder_LightWareI2C::sf20_get_reading(float &reading_m)
     }
 
     if (i==0) {
-        reading_m = sf20_stream_val[0] * 0.01f;
+        reading_cm = sf20_stream_val[0];
     }
 
     // Increment the stream sequence
@@ -465,10 +462,9 @@ void AP_RangeFinder_LightWareI2C::update(void)
 
 void AP_RangeFinder_LightWareI2C::legacy_timer(void)
 {
-    if (legacy_get_reading(state.distance_m)) {
+    if (legacy_get_reading(state.distance_cm)) {
         // update range_valid state based on distance measured
         update_status();
-        state.last_reading_ms = AP_HAL::millis();
     } else {
         set_status(RangeFinder::Status::NoData);
     }
@@ -476,10 +472,9 @@ void AP_RangeFinder_LightWareI2C::legacy_timer(void)
 
 void AP_RangeFinder_LightWareI2C::sf20_timer(void)
 {
-    if (sf20_get_reading(state.distance_m)) {
+    if (sf20_get_reading(state.distance_cm)) {
         // update range_valid state based on distance measured
         update_status();
-        state.last_reading_ms = AP_HAL::millis();
     } else {
         set_status(RangeFinder::Status::NoData);
     }
@@ -505,5 +500,3 @@ bool AP_RangeFinder_LightWareI2C::sf20_wait_on_reply(uint8_t *rx_two_byte)
     }
     return false;
 }
-
-#endif  // AP_RANGEFINDER_LWI2C_ENABLED

@@ -2,10 +2,6 @@
 # encoding: utf-8
 
 def build(bld):
-
-    if bld.env.BOARD != 'sitl':
-        return
-
     bld.ap_find_tests(
         use='ap',
     )

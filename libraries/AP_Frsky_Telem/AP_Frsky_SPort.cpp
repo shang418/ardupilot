@@ -1,7 +1,5 @@
 #include "AP_Frsky_SPort.h"
 
-#if AP_FRSKY_SPORT_TELEM_ENABLED
-
 #include <AP_HAL/utility/sparse-endian.h>
 #include <AP_BattMonitor/AP_BattMonitor.h>
 #include <AP_GPS/AP_GPS.h>
@@ -43,10 +41,7 @@ void AP_Frsky_SPort::send(void)
     }
 
     for (int16_t i = 0; i < numc; i++) {
-        uint8_t readbyte;
-        if (!_port->read(readbyte)) {
-            break;
-        }
+        int16_t readbyte = _port->read();
         if (_SPort.sport_status == false) {
             if  (readbyte == FRAME_HEAD) {
                 _SPort.sport_status = true;
@@ -118,7 +113,6 @@ void AP_Frsky_SPort::send(void)
                 }
                 break;
             case SENSOR_ID_RPM: // Sensor ID 4
-#if AP_RPM_ENABLED
                 {
                     const AP_RPM* rpm = AP::rpm();
                     if (rpm == nullptr) {
@@ -138,7 +132,6 @@ void AP_Frsky_SPort::send(void)
                         _SPort.rpm_call = 0;
                     }
                 }
-#endif  // AP_RPM_ENABLED
                 break;
             case SENSOR_ID_SP2UR: // Sensor ID  6
                 switch (_SPort.various_call) {
@@ -253,7 +246,7 @@ extern const AP_HAL::HAL& hal;
 bool AP_Frsky_SPortParser::should_process_packet(const uint8_t *packet, bool discard_duplicates)
 {
     // check for duplicate packets
-    if (discard_duplicates) {
+    if (discard_duplicates && _parse_state.last_packet != nullptr) {
         /*
           Note: the polling byte packet[0] should be ignored in the comparison
           because we might get the same packet with different polling bytes
@@ -330,10 +323,10 @@ bool AP_Frsky_SPortParser::get_packet(AP_Frsky_SPort::sport_packet_t &sport_pack
     }
 
     const AP_Frsky_SPort::sport_packet_t sp {
-        { _parse_state.rx_buffer[0],
+        _parse_state.rx_buffer[0],
         _parse_state.rx_buffer[1],
         le16toh_ptr(&_parse_state.rx_buffer[2]),
-        le32toh_ptr(&_parse_state.rx_buffer[4]) },
+        le32toh_ptr(&_parse_state.rx_buffer[4])
     };
 
     sport_packet = sp;
@@ -372,7 +365,6 @@ bool AP_Frsky_SPortParser::get_packet(AP_Frsky_SPort::sport_packet_t &sport_pack
         0x1B	// Physical ID 27 - ArduPilot/Betaflight DEFAULT DOWNLINK
  * for FrSky SPort Passthrough (OpenTX) protocol (X-receivers)
  */
-#undef BIT
 #define BIT(x, index) (((x) >> index) & 0x01)
 uint8_t AP_Frsky_SPort::calc_sensor_id(const uint8_t physical_id)
 {
@@ -429,7 +421,7 @@ uint16_t AP_Frsky_SPort::prep_number(int32_t number, uint8_t digits, uint8_t pow
             res = abs_number<<1;
         } else if (abs_number < 10240) {
             res = ((uint16_t)roundf(abs_number * 0.1f)<<1)|0x1;
-        } else { // transmit max possible value (0x3FF x 10^1 = 10230)
+        } else { // transmit max possible value (0x3FF x 10^1 = 10240)
             res = 0x7FF;
         }
         if (number < 0) { // if number is negative, add sign bit in front
@@ -444,7 +436,7 @@ uint16_t AP_Frsky_SPort::prep_number(int32_t number, uint8_t digits, uint8_t pow
             res = ((uint16_t)roundf(abs_number * 0.01f)<<2)|0x2;
         } else if (abs_number < 1024000) {
             res = ((uint16_t)roundf(abs_number * 0.001f)<<2)|0x3;
-        } else { // transmit max possible value (0x3FF x 10^3 = 1023000)
+        } else { // transmit max possible value (0x3FF x 10^3 = 127000)
             res = 0xFFF;
         }
         if (number < 0) { // if number is negative, add sign bit in front
@@ -478,5 +470,3 @@ namespace AP {
         return AP_Frsky_SPort::get_singleton();
     }
 };
-
-#endif  // AP_FRSKY_SPORT_TELEM_ENABLED

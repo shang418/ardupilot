@@ -1,14 +1,12 @@
 #pragma once
 
+#include <AP_HAL/AP_HAL.h>
 #include <AP_Logger/LogStructure.h>
 #include <AP_Param/AP_Param.h>
-#include <AP_Vehicle/AP_FixedWing.h>
-#include <Filter/SlewLimiter.h>
+#include <AP_Vehicle/AP_Vehicle.h>
+#include <AC_PID/AC_PID.h>
 
-#include <Filter/ModeFilter.h>
-
-class AP_AutoTune
-{
+class AP_AutoTune {
 public:
     struct ATGains {
         AP_Float tau;
@@ -20,13 +18,7 @@ public:
 
     enum ATType {
         AUTOTUNE_ROLL  = 0,
-        AUTOTUNE_PITCH = 1,
-        AUTOTUNE_YAW = 2,
-    };
-
-    enum Options {
-        DISABLE_FLTD_UPDATE = 0,
-        DISABLE_FLTT_UPDATE = 1
+        AUTOTUNE_PITCH = 1
     };
 
     struct PACKED log_ATRP {
@@ -47,8 +39,9 @@ public:
         float tau;
     };
 
+
     // constructor
-    AP_AutoTune(ATGains &_gains, ATType type, const AP_FixedWing &parms, class AC_PID &rpid);
+    AP_AutoTune(ATGains &_gains, ATType type, const AP_Vehicle::FixedWing &parms, AC_PID &rpid);
 
     // called when autotune mode is entered
     void start(void);
@@ -59,24 +52,32 @@ public:
 
     // update called whenever autotune mode is active. This is
     // called at the main loop rate
-    void update(struct AP_PIDInfo &pid_info, float scaler, float angle_err_deg);
+    void update(AP_Logger::PID_Info &pid_info, float scaler, float angle_err_deg);
 
     // are we running?
     bool running;
-
+    
 private:
     // the current gains
     ATGains &current;
-    class AC_PID &rpid;
+    AC_PID &rpid;
 
     // what type of autotune is this
     ATType type;
 
-    const AP_FixedWing &aparm;
+	const AP_Vehicle::FixedWing &aparm;
 
     // values to restore if we leave autotune mode
-    ATGains restore;
-    ATGains last_save;
+    ATGains restore; 
+
+    // values we last saved
+    ATGains last_save; 
+
+    // values to save on the next save event
+    ATGains next_save;
+
+    // time when we last saved
+    uint32_t last_save_ms;
 
     // last logging time
     uint32_t last_log_ms;
@@ -84,8 +85,7 @@ private:
     // the demanded/achieved state
     enum class ATState {IDLE,
                         DEMAND_POS,
-                        DEMAND_NEG
-                       };
+                        DEMAND_NEG};
     ATState state;
 
     // the demanded/achieved state
@@ -98,38 +98,33 @@ private:
                        RAISE_D,
                        RAISE_P,
                        LOWER_D,
-                       LOWER_P
-                      };
+                       LOWER_P};
     Action action;
 
     // when we entered the current state
     uint32_t state_enter_ms;
 
+    void check_save(void);
     void check_state_exit(uint32_t state_time_ms);
-    void save_gains(void);
+    void save_gains(const ATGains &v);
 
     void save_float_if_changed(AP_Float &v, float value);
     void save_int16_if_changed(AP_Int16 &v, int16_t value);
     void state_change(ATState newstate);
-    const char *axis_string(void) const;
 
     // get gains with PID components
-    ATGains get_gains(void);
-    void restore_gains(void);
+    ATGains get_gains(const ATGains &current);
+    void set_gains(const ATGains &v);
 
     // update rmax and tau towards target
     void update_rmax();
 
-    bool has_option(Options option) {
-        return (aparm.autotune_options.get() & uint32_t(1<<uint32_t(option))) != 0;
-    }
-
     // 5 point mode filter for FF estimate
     ModeFilterFloat_Size5 ff_filter;
 
-    LowPassFilterConstDtFloat actuator_filter;
-    LowPassFilterConstDtFloat rate_filter;
-    LowPassFilterConstDtFloat target_filter;
+    LowPassFilterFloat actuator_filter;
+    LowPassFilterFloat rate_filter;
+    LowPassFilterFloat target_filter;
 
     // separate slew limiters for P and D
     float slew_limit_max, slew_limit_tau;

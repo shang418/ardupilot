@@ -14,10 +14,6 @@
  */
 #pragma once
 
-#include "AP_Airspeed_config.h"
-
-#if AP_AIRSPEED_ASP5033_ENABLED
-
 /*
   backend driver for airspeed from I2C
  */
@@ -48,5 +44,3 @@ private:
 
     AP_HAL::OwnPtr<AP_HAL::I2CDevice> dev;
 };
-
-#endif  // AP_AIRSPEED_ASP5033_ENABLED

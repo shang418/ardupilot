@@ -20,8 +20,6 @@
 
 #include "AP_Math.h"
 #include <AP_InternalError/AP_InternalError.h>
-#include <AP_CustomRotations/AP_CustomRotations.h>
-#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 // rotate a vector by a standard rotation, attempting
 // to use the minimum number of floating point operations
@@ -257,16 +255,11 @@ void Vector3<T>::rotate(enum Rotation rotation)
         y = tmp;
         return;
     }
-    case ROTATION_CUSTOM_1:
-    case ROTATION_CUSTOM_2:
-#if AP_CUSTOMROTATIONS_ENABLED
-        // custom rotations not supported on eg. Periph by default
-        AP::custom_rotations().rotate(rotation, *this);
+    case ROTATION_CUSTOM: 
+        // Error: caller must perform custom rotations via matrix multiplication
+        INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
         return;
-#endif
     case ROTATION_MAX:
-    case ROTATION_CUSTOM_OLD:
-    case ROTATION_CUSTOM_END:
         break;
     }
     // rotation invalid
@@ -429,7 +422,7 @@ T Vector3<T>::angle(const Vector3<T> &v2) const
         return 0.0f;
     }
     const T cosv = ((*this)*v2) / len;
-    if (cosv >= 1 || cosv <= -1) {
+    if (fabsF(cosv) >= 1) {
         return 0.0f;
     }
     return acosF(cosv);
@@ -437,7 +430,7 @@ T Vector3<T>::angle(const Vector3<T> &v2) const
 
 // multiplication of transpose by a vector
 template <typename T>
-Vector3<T> Vector3<T>::row_times_mat(const Matrix3<T> &m) const
+Vector3<T> Vector3<T>::operator *(const Matrix3<T> &m) const
 {
     return Vector3<T>(*this * m.colx(),
                       *this * m.coly(),
@@ -509,7 +502,7 @@ Vector3<T> Vector3<T>::point_on_line_closest_to_other_point(const Vector3<T> &w1
     const T line_vec_len = line_vec.length();
     // protection against divide by zero
     if(::is_zero(line_vec_len)) {
-        return w1;
+        return {0.0f, 0.0f, 0.0f};
     }
 
     const T scale = 1/line_vec_len;
@@ -594,7 +587,7 @@ void Vector3<T>::segment_to_segment_closest_point(const Vector3<T>& seg1_start, 
         }
     }
     // finally do the division to get tc
-    tc = (::is_zero(tN) ? 0.0 : tN / tD);
+    tc = (fabsf(tN) < FLT_EPSILON ? 0.0 : tN / tD);
 
     // closest point on seg2
     closest_point = seg2_start + line2*tc;
@@ -610,7 +603,7 @@ bool Vector3<T>::segment_plane_intersect(const Vector3<T>& seg_start, const Vect
     T D = plane_normal * u;
     T N = -(plane_normal * w);
 
-    if (::is_zero(D)) {
+    if (fabsf(D) < FLT_EPSILON) {
         if (::is_zero(N)) {
             // segment lies in this plane
             return true;
@@ -632,6 +625,5 @@ bool Vector3<T>::segment_plane_intersect(const Vector3<T>& seg_start, const Vect
 template class Vector3<float>;
 template class Vector3<double>;
 
-// define needed ops for Vector3l, Vector3i as needed
+// define needed ops for Vector3l
 template Vector3<int32_t> &Vector3<int32_t>::operator +=(const Vector3<int32_t> &v);
-template bool Vector3<int16_t>::operator ==(const Vector3<int16_t> &v) const;

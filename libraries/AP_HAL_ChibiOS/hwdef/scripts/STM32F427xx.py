@@ -20,11 +20,7 @@ mcu = {
         (0x10000000,  64, 2), # CCM memory, faster, but not DMA safe
     ],
 
-    'EXPECTED_CLOCK' : 168000000,
-
-    'DEFINES' : {
-        'STM32F4' : '1',
-    }
+    'EXPECTED_CLOCK' : 168000000
 }
 
 DMA_Map = {

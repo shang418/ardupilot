@@ -2,9 +2,9 @@
 
 #include <AP_RangeFinder/AP_RangeFinder.h>
 
-#if AP_RANGEFINDER_ENABLED
-
 #include <AP_Logger/LogStructure.h>
+
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 class AP_RangeFinder_Backend;
 
@@ -70,5 +70,3 @@ private:
 
     struct log_RRNI &_RRNI;
 };
-
-#endif  // AP_RANGEFINDER_ENABLED

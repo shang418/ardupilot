@@ -1,19 +1,11 @@
 #include "mode.h"
 #include "Plane.h"
 
-#if HAL_QUADPLANE_ENABLED
-
 bool ModeQAcro::_enter()
 {
     quadplane.throttle_wait = false;
-    quadplane.transition->force_transition_complete();
+    quadplane.transition_state = QuadPlane::TRANSITION_DONE;
     attitude_control->relax_attitude_controllers();
-
-    // disable yaw rate time constant to maintain old behaviour
-    quadplane.disable_yaw_rate_time_constant();
-
-    IGNORE_RETURN(ahrs.get_quaternion(plane.mode_acro.acro_state.q));
-
     return true;
 }
 
@@ -32,18 +24,13 @@ void ModeQAcro::update()
  */
 void ModeQAcro::run()
 {
-    const uint32_t now = AP_HAL::millis();
-    if (quadplane.tailsitter.in_vtol_transition(now)) {
-        // Tailsitters in FW pull up phase of VTOL transition run FW controllers
-        Mode::run();
-        return;
-    }
-
     if (quadplane.throttle_wait) {
         quadplane.set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
         attitude_control->set_throttle_out(0, true, 0);
         quadplane.relax_attitude_control();
     } else {
+        quadplane.check_attitude_relax();
+
         quadplane.set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
         // convert the input to the desired body frame rate
@@ -71,9 +58,4 @@ void ModeQAcro::run()
         // output pilot's throttle without angle boost
         attitude_control->set_throttle_out(throttle_out, false, 10.0f);
     }
-
-    // Stabilize with fixed wing surfaces
-    plane.mode_acro.run();
 }
-
-#endif

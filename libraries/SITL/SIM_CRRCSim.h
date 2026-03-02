@@ -18,15 +18,7 @@
 
 #pragma once
 
-#include <AP_HAL/AP_HAL_Boards.h>
-
-#ifndef HAL_SIM_CRRCSIM_ENABLED
-#define HAL_SIM_CRRCSIM_ENABLED (CONFIG_HAL_BOARD == HAL_BOARD_SITL)
-#endif
-
-#if HAL_SIM_CRRCSIM_ENABLED
-
-#include <AP_HAL/utility/Socket_native.h>
+#include <AP_HAL/utility/Socket.h>
 
 #include "SIM_Aircraft.h"
 
@@ -44,7 +36,7 @@ public:
 
     /* static object creator */
     static Aircraft *create(const char *frame_str) {
-        return NEW_NOTHROW CRRCSim(frame_str);
+        return new CRRCSim(frame_str);
     }
 
 private:
@@ -81,9 +73,7 @@ private:
 
     bool heli_servos;
     double last_timestamp;
-    SocketAPM_native sock;
+    SocketAPM sock;
 };
 
 } // namespace SITL
-
-#endif  // HAL_SIM_CRRCSIM_ENABLED

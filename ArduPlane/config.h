@@ -2,6 +2,14 @@
 
 #include "defines.h"
 
+// Just so that it's completely clear...
+#define ENABLED                 1
+#define DISABLED                0
+
+// this avoids a very common config error
+#define ENABLE ENABLED
+#define DISABLE DISABLED
+
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // HARDWARE CONFIGURATION AND CONNECTIONS
@@ -15,6 +23,24 @@
 #ifndef MAV_SYSTEM_ID
  # define MAV_SYSTEM_ID          1
 #endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Advanced Failsafe support
+//
+
+#ifndef ADVANCED_FAILSAFE
+ # define ADVANCED_FAILSAFE ENABLED
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Optical flow sensor support
+//
+
+#ifndef OPTFLOW
+ # define OPTFLOW ENABLED
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -95,6 +121,13 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// CAMERA TRIGGER AND CONTROL
+//
+#ifndef CAMERA
+ # define CAMERA         ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 // FLIGHT AND NAVIGATION CONTROL
 //////////////////////////////////////////////////////////////////////////////
@@ -106,15 +139,16 @@
 #ifndef AIRSPEED_CRUISE
  # define AIRSPEED_CRUISE                12 // 12 m/s
 #endif
-
+#define AIRSPEED_CRUISE_CM AIRSPEED_CRUISE*100
 
 
 //////////////////////////////////////////////////////////////////////////////
-// MIN_GROUNDSPEED
+// MIN_GNDSPEED
 //
-#ifndef MIN_GROUNDSPEED
- # define MIN_GROUNDSPEED                   0 // m/s (0 disables)
+#ifndef MIN_GNDSPEED
+ # define MIN_GNDSPEED                   0 // m/s (0 disables)
 #endif
+#define MIN_GNDSPEED_CM MIN_GNDSPEED*100
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -127,9 +161,10 @@
  # define AIRSPEED_FBW_MAX               22
 #endif
 
-#ifndef CRUISE_ALT_FLOOR
- # define CRUISE_ALT_FLOOR 0
+#ifndef ALT_HOLD_FBW
+ # define ALT_HOLD_FBW 0
 #endif
+#define ALT_HOLD_FBW_CM ALT_HOLD_FBW*100
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -148,8 +183,8 @@
 //////////////////////////////////////////////////////////////////////////////
 // Autopilot control limits
 //
-#ifndef ROLL_LIMIT_DEG
- # define ROLL_LIMIT_DEG                         45
+#ifndef HEAD_MAX
+ # define HEAD_MAX                               45
 #endif
 #ifndef PITCH_MAX
  # define PITCH_MAX                              20
@@ -157,6 +192,9 @@
 #ifndef PITCH_MIN
  # define PITCH_MIN                              -25
 #endif
+#define HEAD_MAX_CENTIDEGREE HEAD_MAX * 100
+#define PITCH_MAX_CENTIDEGREE PITCH_MAX * 100
+#define PITCH_MIN_CENTIDEGREE PITCH_MIN * 100
 
 #ifndef RUDDER_MIX
  # define RUDDER_MIX           0.5f
@@ -172,6 +210,10 @@
 //////////////////////////////////////////////////////////////////////////////
 // Logging control
 //
+
+#ifndef LOGGING_ENABLED
+ # define LOGGING_ENABLED                ENABLED
+#endif
 
 #define DEFAULT_LOG_BITMASK   0xffff
 
@@ -190,6 +232,7 @@
 #ifndef ALT_HOLD_HOME
  # define ALT_HOLD_HOME 100
 #endif
+#define ALT_HOLD_HOME_CM ALT_HOLD_HOME*100
 
 //////////////////////////////////////////////////////////////////////////////
 // Developer Items
@@ -199,14 +242,43 @@
  # define SCALING_SPEED          15.0
 #endif
 
+// use this to disable geo-fencing
+#ifndef AC_FENCE
+ # define AC_FENCE ENABLED
+#endif
+
 // a digital pin to set high when the geo-fence triggers. Defaults
 // to -1, which means don't activate a pin
 #ifndef FENCE_TRIGGERED_PIN
  # define FENCE_TRIGGERED_PIN -1
 #endif
 
-#ifndef AP_PLANE_OFFBOARD_GUIDED_SLEW_ENABLED
- #define AP_PLANE_OFFBOARD_GUIDED_SLEW_ENABLED 1
+//////////////////////////////////////////////////////////////////////////////
+// Parachute release
+#ifndef PARACHUTE
+#define PARACHUTE HAL_PARACHUTE_ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Payload Gripper
+#ifndef GRIPPER_ENABLED
+  #define GRIPPER_ENABLED !HAL_MINIMIZE_FEATURES
+#endif
+
+#ifndef STATS_ENABLED
+ # define STATS_ENABLED ENABLED
+#endif
+
+#ifndef OSD_ENABLED
+ #define OSD_ENABLED DISABLED
+#endif
+
+#ifndef OFFBOARD_GUIDED
+ #define OFFBOARD_GUIDED !HAL_MINIMIZE_FEATURES
+#endif
+
+#ifndef LANDING_GEAR_ENABLED
+ #define LANDING_GEAR_ENABLED !HAL_MINIMIZE_FEATURES
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

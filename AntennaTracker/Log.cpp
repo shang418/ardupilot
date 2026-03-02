@@ -1,15 +1,22 @@
 #include "Tracker.h"
 
-#if HAL_LOGGING_ENABLED
+#if LOGGING_ENABLED == ENABLED
 
 // Code to Write and Read packets from AP_Logger log memory
 
 // Write an attitude packet
 void Tracker::Log_Write_Attitude()
 {
-    const Vector3f targets{0.0f, nav_status.pitch, nav_status.bearing};
+    Vector3f targets;
+    targets.y = nav_status.pitch * 100.0f;
+    targets.z = wrap_360_cd(nav_status.bearing * 100.0f);
     ahrs.Write_Attitude(targets);
     AP::ahrs().Log_Write();
+    ahrs.Write_AHRS2();
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    sitl.Log_Write_SIMSTATE();
+#endif
+    ahrs.Write_POS();
 }
 
 struct PACKED log_Vehicle_Baro {
@@ -85,15 +92,24 @@ const struct LogStructure Tracker::log_structure[] = {
        "VPOS", "QLLefff", "TimeUS,Lat,Lng,Alt,VelX,VelY,VelZ", "sddmnnn", "FGGB000", true }
 };
 
-uint8_t Tracker::get_num_log_structures() const
-{
-    return ARRAY_SIZE(log_structure);
-}
-
 void Tracker::Log_Write_Vehicle_Startup_Messages()
 {
     logger.Write_Mode((uint8_t)mode->number(), ModeReason::INITIALISED);
     gps.Write_AP_Logger_Log_Startup_messages();
 }
 
-#endif // HAL_LOGGING_ENABLED
+void Tracker::log_init(void)
+{
+    logger.Init(log_structure, ARRAY_SIZE(log_structure));
+}
+
+#else // LOGGING_ENABLED
+
+void Tracker::Log_Write_Attitude(void) {}
+
+void Tracker::log_init(void) {}
+void Tracker::Log_Write_Vehicle_Pos(int32_t lat, int32_t lng, int32_t alt, const Vector3f& vel) {}
+void Tracker::Log_Write_Vehicle_Baro(float pressure, float altitude) {}
+void Tracker::Log_Write_Vehicle_Startup_Messages() {}
+
+#endif // LOGGING_ENABLED

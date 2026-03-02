@@ -18,8 +18,6 @@
 
 #include "SIM_JSON.h"
 
-#if HAL_SIM_JSON_ENABLED
-
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -27,7 +25,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Logger/AP_Logger.h>
 #include <AP_HAL/utility/replace.h>
-#include <SRV_Channel/SRV_Channel.h>
 
 #define UDP_TIMEOUT_MS 100
 
@@ -85,13 +82,6 @@ JSON::JSON(const char *frame_str) :
 */
 void JSON::set_interface_ports(const char* address, const int port_in, const int port_out)
 {
-    if (!sock.bind("0.0.0.0", port_in)) {
-        fprintf(stderr, "SITL: socket in bind failed on sim in : %d  - %s\n", port_in, strerror(errno));
-        fprintf(stderr, "Aborting launch...\n");
-        exit(1);
-    }
-    printf("Bind %s:%d for SITL in\n", "127.0.0.1", port_in);
-
     sock.set_blocking(false);
     sock.reuseaddress();
 
@@ -108,34 +98,20 @@ void JSON::set_interface_ports(const char* address, const int port_in, const int
 */
 void JSON::output_servos(const struct sitl_input &input)
 {
-    size_t pkt_size = 0;
-    ssize_t send_ret = -1;
-    if (SRV_Channels::have_32_channels()) {
-      servo_packet_32 pkt;
-      pkt.frame_rate = rate_hz;
-      pkt.frame_count = frame_counter;
-      for (uint8_t i=0; i<32; i++) {
-          pkt.pwm[i] = input.servos[i];
-      }
-      pkt_size = sizeof(pkt);
-      send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
-    } else {
-      servo_packet_16 pkt;
-      pkt.frame_rate = rate_hz;
-      pkt.frame_count = frame_counter;
-      for (uint8_t i=0; i<16; i++) {
-          pkt.pwm[i] = input.servos[i];
-      }
-      pkt_size = sizeof(pkt);
-      send_ret = sock.sendto(&pkt, pkt_size, target_ip, control_port);
+    servo_packet pkt;
+    pkt.frame_rate = rate_hz;
+    pkt.frame_count = frame_counter;
+    for (uint8_t i=0; i<16; i++) {
+        pkt.pwm[i] = input.servos[i];
     }
 
-    if ((size_t)send_ret != pkt_size) {
+    size_t send_ret = sock.sendto(&pkt, sizeof(pkt), target_ip, control_port);
+    if (send_ret != sizeof(pkt)) {
         if (send_ret <= 0) {
             printf("Unable to send servo output to %s:%u - Error: %s, Return value: %ld\n",
                    target_ip, control_port, strerror(errno), (long)send_ret);
         } else {
-            printf("Sent %ld bytes instead of %lu bytes\n", (long)send_ret, (unsigned long)pkt_size);
+            printf("Sent %ld bytes instead of %lu bytes\n", (long)send_ret, (unsigned long)sizeof(pkt));
         }
     }
 }
@@ -277,7 +253,7 @@ void JSON::recv_fdm(const struct sitl_input &input)
 
     const uint32_t received_bitmask = parse_sensors((const char *)(p1+1));
     if (received_bitmask == 0) {
-        // did not receive one of the mandatory fields
+        // did not receve one of the mandatory fields
         printf("Did not contain all mandatory fields\n");
         return;
     }
@@ -330,18 +306,14 @@ void JSON::recv_fdm(const struct sitl_input &input)
 
         airspeed_pitot = state.airspeed;
     } else {
-        
-        // wind is not supported yet for JSON sim, assume zero for now        
-        wind_ef.zero(); 
-
-        // velocity relative to airmass in Earth's frame
-        velocity_air_ef = velocity_ef - wind_ef;
-
         // velocity relative to airmass in body frame
-        velocity_air_bf = dcm.transposed() * velocity_air_ef;
+        velocity_air_bf = dcm.transposed() * velocity_ef;
 
-        // airspeed fix for eas2tas
-        update_eas_airspeed();
+        // airspeed
+        airspeed = velocity_air_bf.length();
+
+        // airspeed as seen by a fwd pitot tube (limited to 120m/s)
+        airspeed_pitot = constrain_float(velocity_air_bf * Vector3f(1.0f, 0.0f, 0.0f), 0.0f, 120.0f);
     }
 
     // Convert from a meters from origin physics to a lat long alt
@@ -476,5 +448,3 @@ void JSON::update(const struct sitl_input &input)
     }
 #endif
 }
-
-#endif  // HAL_SIM_JSON_ENABLED

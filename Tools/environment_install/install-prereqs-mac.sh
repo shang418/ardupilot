@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 echo "---------- $0 start ----------"
 set -e
 set -x
@@ -42,7 +42,7 @@ echo "Checking homebrew..."
 $(which -s brew) ||
 {
     echo "installing homebrew..."
-    /usr/bin/env bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 } 
 echo "Homebrew installed"
 
@@ -52,7 +52,7 @@ echo "Checking CLI Tools installed..."
     ERROR=$(xcode-select --install 2>&1 > /dev/null)
 } ||
 {
-if [[ $ERROR != *"ommand line tools are already installed"* ]]; then
+if [[ $ERROR != *"command line tools are already installed"* ]]; then
     echo "$ERROR" 1>&2
     exit 1
 fi
@@ -78,7 +78,6 @@ function install_arm_none_eabi_toolchain() {
         )
     fi
     echo "Registering STM32 Toolchain for ccache"
-    sudo mkdir -p /usr/local/opt/ccache/libexec
     sudo ln -s -f $CCACHE_PATH /usr/local/opt/ccache/libexec/arm-none-eabi-g++
     sudo ln -s -f $CCACHE_PATH /usr/local/opt/ccache/libexec/arm-none-eabi-gcc
     echo "Done!"
@@ -97,16 +96,8 @@ function maybe_prompt_user() {
     fi
 }
 
-# delete links installed by github in /usr/local/bin; installing or
-# upgrading python via brew fails if these links are in place.  brew
-# auto-updates things when you install other packages which depend on
-# more recent versions.
-# see https://github.com/orgs/Homebrew/discussions/3895
-find /usr/local/bin -lname '*/Library/Frameworks/Python.framework/*' -delete
-
-# brew update randomly failing on CI, so ignore errors:
 brew update
-brew install --force --overwrite gawk coreutils wget
+brew install gawk curl coreutils wget
 
 PIP=pip
 if maybe_prompt_user "Install python using pyenv [N/y]?" ; then
@@ -120,7 +111,7 @@ if maybe_prompt_user "Install python using pyenv [N/y]?" ; then
 
         pushd $HOME/.pyenv
         git fetch --tags
-        git checkout v2.3.12
+        git checkout v2.0.4
         popd
         exportline="export PYENV_ROOT=\$HOME/.pyenv"
         echo $exportline >> ~/$SHELL_LOGIN
@@ -133,12 +124,8 @@ if maybe_prompt_user "Install python using pyenv [N/y]?" ; then
         source ~/$SHELL_LOGIN
     }
     echo "pyenv installed"
-    {
-        $(pyenv global 3.10.4)
-    } || {
-        env PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.10.4
-        pyenv global 3.10.4
-    }
+    env PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install 3.9.4
+    pyenv global 3.9.4
 fi
 
 
@@ -161,7 +148,7 @@ if [[ $DO_AP_STM_ENV -eq 1 ]]; then
     install_arm_none_eabi_toolchain
 fi
 
-PYTHON_PKGS="future lxml pymavlink MAVProxy pexpect geocoder flake8 junitparser empy==3.3.4 dronecan"
+PYTHON_PKGS="future lxml pymavlink MAVProxy pexpect geocoder flake8"
 # add some Python packages required for commonly-used MAVProxy modules and hex file generation:
 if [[ $SKIP_AP_EXT_ENV -ne 1 ]]; then
     PYTHON_PKGS="$PYTHON_PKGS intelhex gnureadline"

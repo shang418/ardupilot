@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # encoding: utf-8
 # (c) Siddharth Bharat Purohit, 3DRobotics Inc.
 
@@ -44,7 +45,7 @@ class mavgen(Task.Task):
                     node.parent.path_from(entry_point.parent),
                     path
                 )
-                if path not in names:
+                if not path in names:
                     names.append(path)
 
         return nodes, names
@@ -76,7 +77,7 @@ def process_mavgen(self):
     if not hasattr(self, 'output_dir'):
         self.bld.fatal('mavgen: missing option output_dir')
 
-    inputs = self.to_nodes(self.bld.srcnode.find_node(self.source))
+    inputs = self.to_nodes(self.source)
     outputs = []
 
     self.source = []
@@ -94,5 +95,8 @@ def configure(cfg):
     """
     setup environment for mavlink header generator
     """
+    cfg.load('python')
+    cfg.check_python_version(minver=(2,7,0))
+
     env = cfg.env
     env.MAVLINK_DIR = cfg.srcnode.make_node('modules/mavlink/').abspath()

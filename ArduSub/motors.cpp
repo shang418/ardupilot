@@ -10,7 +10,7 @@ void Sub::enable_motor_output()
 void Sub::motors_output()
 {
     // Motor detection mode controls the thrusters directly
-    if (control_mode == Mode::Number::MOTOR_DETECT){
+    if (control_mode == MOTOR_DETECT){
         return;
     }
     // check if we are performing the motor test
@@ -18,12 +18,7 @@ void Sub::motors_output()
         verify_motor_test();
     } else {
         motors.set_interlock(true);
-        auto &srv = AP::srv();
-        srv.cork();
-        SRV_Channels::calc_pwm();
-        SRV_Channels::output_ch_all();
         motors.output();
-        srv.push();
     }
 }
 
@@ -75,7 +70,7 @@ bool Sub::verify_motor_test()
 
     if (!pass) {
         ap.motor_test = false;
-        AP::arming().disarm(AP_Arming::Method::MOTORTEST);
+        motors.armed(false); // disarm motors
         last_do_motor_test_fail_ms = AP_HAL::millis();
         return false;
     }
@@ -83,7 +78,7 @@ bool Sub::verify_motor_test()
     return true;
 }
 
-bool Sub::handle_do_motor_test(mavlink_command_int_t command) {
+bool Sub::handle_do_motor_test(mavlink_command_long_t command) {
     last_do_motor_test_ms = AP_HAL::millis();
 
     // If we are not already testing motors, initialize test
@@ -108,9 +103,9 @@ bool Sub::handle_do_motor_test(mavlink_command_int_t command) {
     float throttle = command.param3;
     // float timeout_s = command.param4; // not used
     // float motor_count = command.param5; // not used
-    const uint32_t test_type = command.y;
+    float test_type = command.param6;
 
-    if (test_type != MOTOR_TEST_ORDER_BOARD) {
+    if (!is_equal(test_type, (float)MOTOR_TEST_ORDER_BOARD)) {
         gcs().send_text(MAV_SEVERITY_WARNING, "bad test type %0.2f", (double)test_type);
         return false; // test type not supported here
     }

@@ -61,10 +61,5 @@ void SITL::Airspeed_DLVR::update(const class Aircraft &aircraft)
     last_update_ms = now_ms;
 
     pressure = AP::sitl()->state.airspeed_raw_pressure[0];
-
-    float sim_alt = AP::sitl()->state.altitude;
-    sim_alt += 2 * rand_float();
-
-    // To Do: Add a sensor board temperature offset parameter
-    temperature = AP_Baro::get_temperatureC_for_alt_amsl(sim_alt);
+    temperature = 25.0f;
 }

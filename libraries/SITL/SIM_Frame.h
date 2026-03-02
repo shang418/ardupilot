@@ -20,7 +20,6 @@
 
 #include "SIM_Aircraft.h"
 #include "SIM_Motor.h"
-#include <AP_JSON/AP_JSON.h>
 
 namespace SITL {
 
@@ -40,7 +39,7 @@ public:
           num_motors(_num_motors),
           motors(_motors) {}
 
-#if AP_SIM_ENABLED
+
     // find a frame by name
     static Frame *find_frame(const char *name);
     
@@ -52,8 +51,7 @@ public:
                           const struct sitl_input &input,
                           Vector3f &rot_accel, Vector3f &body_accel, float* rpm,
                           bool use_drag=true);
-#endif // AP_SIM_ENABLED
-
+    
     float terminal_velocity;
     float terminal_rotation_rate;
     uint8_t motor_offset;
@@ -100,7 +98,7 @@ private:
         // battery capacity in Ah. Use zero for unlimited
         float battCapacityAh = 0.0;
 
-        // CTUN.ThO at hover at refAlt
+        // CTUN.ThO at bover at refAlt
         float hoverThrOut = 0.39;
 
         // MOT_THST_EXPO
@@ -123,45 +121,30 @@ private:
         float slew_max = 150;
 
         // rotor disc area in m**2 for 4 x 0.35m dia rotors
-        // Note that coaxial rotors count as one rotor only when calculating effective disc area
+        // Note that coaxial rotors count as one rotor only when cauclating effective disc area
         float disc_area = 0.385;
 
         // momentum drag coefficient
         float mdrag_coef = 0.2;
 
-        // if zero value will be estimated from mass
-        Vector3f moment_of_inertia;
-
-        // if zero will no be used
-        Vector3f motor_pos[12];
-        Vector3f motor_thrust_vec[12];
-        float yaw_factor[12] = {0};
-
-        // number of motors
-        float num_motors = 4;
-
     } default_model;
 
-protected:
-    // load frame parameters from a json model file
-    void load_frame_params(const char *model_json);
+    struct Model model;
+
+    // exposed area times coefficient of drag
+    float areaCd;
+    float mass;
+    float velocity_max;
+    float thrust_max;
+    float effective_prop_area;
+    Battery *battery;
+    float last_param_voltage;
 
     // get air density in kg/m^3
     float get_air_density(float alt_amsl) const;
 
-    struct Model model;
+    // load frame parameters from a json model file
+    void load_frame_params(const char *model_json);
 
-private:
-    // exposed area times coefficient of drag
-    float areaCd;
-    float mass;
-    float last_param_voltage;
-#if AP_SIM_ENABLED
-    Battery *battery;
-#endif
-
-    // json parsing helpers
-    void parse_float(AP_JSON::value val, const char* label, float &param);
-    void parse_vector3(AP_JSON::value val, const char* label, Vector3f &param);
 };
 }

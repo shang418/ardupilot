@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-#if AP_LANDINGGEAR_ENABLED
+#if LANDING_GEAR_ENABLED == ENABLED
 
 // Run landing gear controller at 10Hz
 void Copter::landinggear_update()
@@ -14,7 +14,6 @@ void Copter::landinggear_update()
     int32_t height_cm = flightmode->get_alt_above_ground_cm();
 
     // use rangefinder if available
-#if AP_RANGEFINDER_ENABLED
     switch (rangefinder.status_orient(ROTATION_PITCH_270)) {
     case RangeFinder::Status::NotConnected:
     case RangeFinder::Status::NoData:
@@ -32,9 +31,8 @@ void Copter::landinggear_update()
         height_cm = rangefinder_state.alt_cm_filt.get();
         break;
     }
-#endif  // AP_RANGEFINDER_ENABLED
 
     landinggear.update(height_cm * 0.01f); // convert cm->m for update call
 }
 
-#endif // AP_LANDINGGEAR_ENABLED
+#endif // LANDING_GEAR_ENABLED

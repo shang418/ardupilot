@@ -19,9 +19,6 @@
  */
 #include "AP_Filesystem.h"
 #include "AP_Filesystem_Sys.h"
-
-#if AP_FILESYSTEM_SYS_ENABLED
-
 #include <AP_Math/AP_Math.h>
 #include <AP_CANManager/AP_CANManager.h>
 #include <AP_Scheduler/AP_Scheduler.h>
@@ -39,7 +36,6 @@ static const SysFileList sysfs_file_list[] = {
     {"dma.txt"},
     {"memory.txt"},
     {"uarts.txt"},
-    {"timers.txt"},
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
     {"can_log.txt"},
 #endif
@@ -49,11 +45,6 @@ static const SysFileList sysfs_file_list[] = {
 #endif
 #if !defined(HAL_BOOTLOADER_BUILD) && (defined(STM32F7) || defined(STM32H7))
     {"persistent.parm"},
-#endif
-    {"crash_dump.bin"},
-    {"storage.bin"},
-#if AP_FILESYSTEM_SYS_FLASH_ENABLED
-    {"flash.bin"},
 #endif
 };
 
@@ -66,7 +57,7 @@ int8_t AP_Filesystem_Sys::file_in_sysfs(const char *fname) {
     return -1;
 }
 
-int AP_Filesystem_Sys::open(const char *fname, int flags, bool allow_absolute_paths)
+int AP_Filesystem_Sys::open(const char *fname, int flags)
 {
     if ((flags & O_ACCMODE) != O_RDONLY) {
         errno = EROFS;
@@ -83,7 +74,7 @@ int AP_Filesystem_Sys::open(const char *fname, int flags, bool allow_absolute_pa
         return -1;
     }
     struct rfile &r = file[idx];
-    r.str = NEW_NOTHROW ExpandingString;
+    r.str = new ExpandingString;
     if (r.str == nullptr) {
         errno = ENOMEM;
         return -1;
@@ -101,7 +92,7 @@ int AP_Filesystem_Sys::open(const char *fname, int flags, bool allow_absolute_pa
     if (strcmp(fname, "threads.txt") == 0) {
         hal.util->thread_info(*r.str);
     }
-#if AP_SCHEDULER_ENABLED
+#if HAL_SCHEDULER_ENABLED
     if (strcmp(fname, "tasks.txt") == 0) {
         AP::scheduler().task_info(*r.str);
     }
@@ -112,13 +103,8 @@ int AP_Filesystem_Sys::open(const char *fname, int flags, bool allow_absolute_pa
     if (strcmp(fname, "memory.txt") == 0) {
         hal.util->mem_info(*r.str);
     }
-#if HAL_UART_STATS_ENABLED
     if (strcmp(fname, "uarts.txt") == 0) {
         hal.util->uart_info(*r.str);
-    }
-#endif
-    if (strcmp(fname, "timers.txt") == 0) {
-        hal.util->timer_info(*r.str);
     }
 #if HAL_CANMANAGER_ENABLED
     if (strcmp(fname, "can_log.txt") == 0) {
@@ -141,28 +127,6 @@ int AP_Filesystem_Sys::open(const char *fname, int flags, bool allow_absolute_pa
     if (strcmp(fname, "persistent.parm") == 0) {
         hal.util->load_persistent_params(*r.str);
     }
-#if AP_CRASHDUMP_ENABLED
-    if (strcmp(fname, "crash_dump.bin") == 0) {
-        r.str->set_buffer((char*)hal.util->last_crash_dump_ptr(), hal.util->last_crash_dump_size(), hal.util->last_crash_dump_size());
-    }
-#endif
-    if (strcmp(fname, "storage.bin") == 0) {
-        // we don't want to store the contents of storage.bin
-        // we read directly from the storage driver
-        void *ptr = nullptr;
-        size_t size = 0;
-        if (hal.storage->get_storage_ptr(ptr, size)) {
-            r.str->set_buffer((char*)ptr, size, size);
-        }
-    }
-#if AP_FILESYSTEM_SYS_FLASH_ENABLED
-    if (strcmp(fname, "flash.bin") == 0) {
-        void *ptr = (void*)0x08000000;
-        const size_t size = BOARD_FLASH_SIZE*1024;
-        r.str->set_buffer((char*)ptr, size, size);
-    }
-#endif
-    
     if (r.str->get_length() == 0) {
         errno = r.str->has_failed_allocation()?ENOMEM:ENOENT;
         delete r.str;
@@ -196,7 +160,6 @@ int32_t AP_Filesystem_Sys::read(int fd, void *buf, uint32_t count)
     struct rfile &r = file[fd];
     count = MIN(count, r.str->get_length() - r.file_ofs);
     memcpy(buf, &r.str->get_string()[r.file_ofs], count);
-
     r.file_ofs += count;
     return count;
 }
@@ -229,7 +192,7 @@ void *AP_Filesystem_Sys::opendir(const char *pathname)
         errno = ENOENT;
         return nullptr;
     }
-    DirReadTracker *dtracker = NEW_NOTHROW DirReadTracker;
+    DirReadTracker *dtracker = new DirReadTracker;
     if (dtracker == nullptr) {
         errno = ENOMEM;
         return nullptr;
@@ -244,9 +207,7 @@ struct dirent *AP_Filesystem_Sys::readdir(void *dirp)
         // we have reached end of list
         return nullptr;
     }
-#if AP_FILESYSTEM_HAVE_DIRENT_DTYPE
     dtracker->curr_file.d_type = DT_REG;
-#endif
     size_t max_length = ARRAY_SIZE(dtracker->curr_file.d_name);
     strncpy_noterm(dtracker->curr_file.d_name, sysfs_file_list[dtracker->file_offset].name, max_length);
     dtracker->file_offset++;
@@ -285,16 +246,6 @@ int AP_Filesystem_Sys::stat(const char *pathname, struct stat *stbuf)
     }
     // give a fixed size for stat. It is too expensive to
     // read every file for a directory listing
-    if (strcmp(pathname_noslash, "storage.bin") == 0) {
-        stbuf->st_size = HAL_STORAGE_SIZE;
-#if AP_CRASHDUMP_ENABLED
-    } else if (strcmp(pathname_noslash, "crash_dump.bin") == 0) {
-        stbuf->st_size = hal.util->last_crash_dump_size();
-#endif
-    } else {
-        stbuf->st_size = 100000;
-    }
+    stbuf->st_size = 100000;
     return 0;
 }
-
-#endif  // AP_FILESYSTEM_SYS_ENABLED

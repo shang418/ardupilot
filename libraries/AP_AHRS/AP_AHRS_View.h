@@ -21,6 +21,7 @@
  */
 
 #include "AP_AHRS.h"
+#include <AP_Motors/AP_Motors.h>
 
 // fwd declarations to avoid include errors
 class AC_AttitudeControl;
@@ -84,12 +85,12 @@ public:
       wrappers around ahrs functions which pass-thru directly. See
       AP_AHRS.h for description of each function
      */
-    bool get_location(Location &loc) const WARN_IF_UNUSED {
-        return ahrs.get_location(loc);
+    bool get_position(struct Location &loc) const WARN_IF_UNUSED {
+        return ahrs.get_position(loc);
     }
 
-    bool wind_estimate(Vector3f &wind) {
-        return ahrs.wind_estimate(wind);
+    Vector3f wind_estimate(void) {
+        return ahrs.wind_estimate();
     }
 
     bool airspeed_estimate(float &airspeed_ret) const WARN_IF_UNUSED {
@@ -140,8 +141,8 @@ public:
         return ahrs.groundspeed();
     }
 
-    const Vector3f &get_accel_ef(void) const {
-        return ahrs.get_accel_ef();
+    const Vector3f &get_accel_ef_blended(void) const {
+        return ahrs.get_accel_ef_blended();
     }
 
     uint32_t getLastPosNorthEastReset(Vector2f &pos) WARN_IF_UNUSED {
@@ -174,6 +175,8 @@ public:
 
     // Logging Functions
     void Write_AttitudeView(const Vector3f &targets) const;    
+    void Write_Rate( const AP_Motors &motors, const AC_AttitudeControl &attitude_control,
+                        const AC_PosControl &pos_control) const;
 
     float roll;
     float pitch;
@@ -181,19 +184,6 @@ public:
     int32_t roll_sensor;
     int32_t pitch_sensor;
     int32_t yaw_sensor;
-
-
-    // get current rotation
-    // note that this may not be the rotation were actually using, see _pitch_trim_deg
-    enum Rotation get_rotation(void) const {
-        return rotation;
-    }
-
-    // get pitch trim (deg)
-    float get_pitch_trim() const { return _pitch_trim_deg; }
-
-    // Rotate vector from AHRS reference frame to AHRS view refences frame
-    void rotate(Vector3f &vec) const;
 
 private:
     const enum Rotation rotation;

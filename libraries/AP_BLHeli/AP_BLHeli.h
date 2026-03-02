@@ -24,9 +24,9 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL.h>
 
-#define HAVE_AP_BLHELI_SUPPORT HAL_SUPPORT_RCOUT_SERIAL
-
 #if HAL_SUPPORT_RCOUT_SERIAL
+
+#define HAVE_AP_BLHELI_SUPPORT
 
 #include <AP_ESC_Telem/AP_ESC_Telem_Backend.h>
 
@@ -43,7 +43,7 @@ public:
     AP_BLHeli();
     
     void update(void);
-    void init(uint32_t motor_mask, AP_HAL::RCOutput::output_mode mode);
+    void init(void);
     void update_telemetry(void);
     bool process_input(uint8_t b);
 
@@ -53,9 +53,7 @@ public:
         return channel_bidir_dshot_mask.get() & (1U << motor_map[esc_index]);
     }
 
-    uint32_t get_bidir_dshot_mask() const { return channel_bidir_dshot_mask.get(); }
-    uint8_t get_motor_poles() const { return motor_poles.get(); }
-    uint16_t get_telemetry_rate() const { return telem_rate.get(); }
+    uint16_t get_bidir_dshot_mask() const { return channel_bidir_dshot_mask.get(); }
 
     static AP_BLHeli *get_singleton(void) {
         return _singleton;
@@ -233,18 +231,16 @@ private:
 
     // have we disabled motor outputs?
     bool motors_disabled;
-    // mask of channels that should normally be disabled
-    uint32_t motors_disabled_mask;
 
     // have we locked the UART?
     bool uart_locked;
 
-    // true if we have a mix of reversible and normal ESC
+    // true if we have a mix of reversable and normal ESC
     bool mixed_type;
 
     // mapping from BLHeli motor numbers to RC output channels
     uint8_t motor_map[max_motors];
-    uint32_t motor_mask;
+    uint16_t motor_mask;
 
     // convert between servo number and FMU channel number for ESC telemetry
     uint8_t chan_offset;
