@@ -162,6 +162,9 @@ public:
     float               get_forward() const { return _forward_in; }
     float               get_lateral() const { return _lateral_in; }
     virtual float       get_throttle_hover() const = 0;
+    // output_to_motors - sends commands to the motors
+    virtual bool                get_torques_measured(float &roll, float &pitch, float &yaw,float arm_length = 0.60f) {return false; };
+
 
     // motor failure handling
     void                set_thrust_boost(bool enable) { _thrust_boost = enable; }
@@ -272,6 +275,10 @@ public:
 
     // direct motor write
     virtual void        rc_write(uint8_t chan, uint16_t pwm);
+
+       // direct motor read (returns current PWM output for the channel)
+    void                rc_read(uint8_t chan, uint16_t &pwm);
+        
 
 #if AP_SCRIPTING_ENABLED
     void set_frame_string(const char * str);

@@ -446,6 +446,9 @@ void Copter::exit_mode(Mode *&old_flightmode,
     // perform cleanup required for each flight mode
     old_flightmode->exit();
 
+
+
+
 #if FRAME_CONFIG == HELI_FRAME
     // firmly reset the flybar passthrough to false when exiting acro mode.
     if (old_flightmode == &mode_acro) {

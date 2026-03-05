@@ -14,6 +14,43 @@ void Copter::run_rate_controller()
     attitude_control->set_dt(last_loop_time_s);
     pos_control->set_dt(last_loop_time_s);
 
+    // Check if we should enable angular acceleration inner loop (Acro mode + valid measurement source)
+    // ---- ACCEL SOURCE SELECTION ----
+    // Change this line to switch between angular acceleration sources:
+    //   AccelSource::IMU    - use IMU angular acceleration (from AP_AngularAccel, filtered gyro derivative)
+    //   AccelSource::STRAIN - use strain gauge measurements
+    //const AC_AttitudeControl::AccelSource accel_source = AC_AttitudeControl::AccelSource::IMU;
+   // attitude_control->set_accel_source(accel_source);
+    // --------------------------------
+
+    bool enable_accel_loop = false;
+    const Mode::Number mode_num = flightmode->mode_number();
+    if (mode_num == Mode::Number::ACRO){
+        enable_accel_loop = true;
+        }
+    
+
+    // Enable or disable the angular acceleration inner loop calculations (for logging)
+    attitude_control->set_accel_inner_loop_enabled(enable_accel_loop);
+
+    // Ian change this to true to use the accel controller for real flight
+    // Control whether to use accel output for motors (false = calculate but don't use, true = use for control)
+    // Set to false by default for safety - allows validating controller output via logs before using for flight
+    attitude_control->set_use_accel_output(enable_accel_loop);
+
+    // if (!using_rate_thread) {
+    //     // Rate controller runs at 100Hz so that rate-PID and INDI modes are compared
+    //     // at the same update rate (INDI is limited to 100Hz by the angular accel sensor).
+    //     // The main scheduler calls this function at 400Hz; every 4th call is passed through.
+    //     static uint8_t rate_div_count = 0;
+    //     if (++rate_div_count >= 4) {
+    //         rate_div_count = 0;
+    //         constexpr float dt_100hz = 0.01f;
+    //         motors->set_dt(dt_100hz);
+    //         attitude_control->rate_controller_run();
+    //     }
+    // }
+
     // run low level rate controllers that only require IMU data
     attitude_control->rate_controller_run();
     // reset sysid and other temporary inputs

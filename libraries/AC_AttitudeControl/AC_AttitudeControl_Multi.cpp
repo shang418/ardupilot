@@ -4,6 +4,8 @@
 #include <AC_PID/AC_PID.h>
 #include <AP_Scheduler/AP_Scheduler.h>
 
+extern const AP_HAL::HAL& hal;
+
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // parameters from parent vehicle
@@ -439,6 +441,24 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
     _throttle_rpy_mix = constrain_float(_throttle_rpy_mix, 0.1f, AC_ATTITUDE_CONTROL_MAX);
 }
 
+
+ Vector3f AC_AttitudeControl_Multi::compute_angular_accel(const Vector3f& gyro)
+{
+    uint64_t now_us = AP_HAL::micros64();
+
+    // Update derivative filters with current gyro rate (X and Y only)
+    _deriv_filter_x.update(gyro.x, now_us);
+    _deriv_filter_y.update(gyro.y, now_us);
+
+    // Get smoothed derivatives (rad/s^2) - Z is unused
+    Vector3f angular_accel;
+    angular_accel.x = _deriv_filter_x.slope()*1.0e6f;
+    angular_accel.y = _deriv_filter_y.slope()*1.0e6f;
+    angular_accel.z = 0.0f;
+
+    return angular_accel;
+}
+
 void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, float dt)
 {
     // take a copy of the target so that it can't be changed from under us.
@@ -455,13 +475,103 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     _rate_gyro = gyro;
     _rate_gyro_time_us = AP_HAL::micros64();
 
-    _motors.set_roll(get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt, _motors.limit.roll, _pd_scale.x) + _actuator_sysid.x);
+    // Fixed 100Hz dt: this function is called at 100Hz by the rate divider in
+    // Attitude.cpp — independent of the scheduler's 400Hz tick.  All integrators
+    // and filter coefficients (e.g. motor dynamics α=0.98 → τ=500ms) are correct
+    // at this rate.
+    const float dt_100hz = dt; // this is dt for now.....Ask Ian about 100 Hz in Attitude.cpp
+
+    // Rate PIDs at 100Hz
+    float roll_out  = get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt_100hz, _motors.limit.roll,  _pd_scale.x) + _actuator_sysid.x;
+    float pitch_out = get_rate_pitch_pid().update_all(ang_vel_body.y, gyro.y, dt_100hz, _motors.limit.pitch, _pd_scale.y) + _actuator_sysid.y;
+    float yaw_out   = get_rate_yaw_pid().update_all(ang_vel_body.z,  gyro.z,  dt_100hz, _motors.limit.yaw,   _pd_scale.z) + _actuator_sysid.z;
+
+// get acceleration measurements here from IMU derivative filter 
+    Vector3f _accel_meas = compute_angular_accel(_rate_gyro);
+
+    _accel_roll_meas= _accel_meas.x*0.01; 
+    _accel_pitch_meas = _accel_meas.y*0.01; 
+
+    
+    hal.console->printf("\n Accel Enabled: %d,  Roll Accel measured:%0.5f, Pitch Accel measured:%0.5f ",_accel_inner_loop_enabled,_accel_roll_meas,_accel_pitch_meas);
+   
+    if (_accel_inner_loop_enabled) {
+       
+        // Rate PIDs at 100Hz
+        roll_out  = get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt_100hz, _motors.limit.roll,  3.14f) ;
+        pitch_out = get_rate_pitch_pid().update_all(ang_vel_body.y, gyro.y, dt_100hz, _motors.limit.pitch, 3.14f) ;
+
+
+        _accel_roll_target  = roll_out;
+        _accel_pitch_target = pitch_out;
+
+        // // get acceleration measurements here from IMU derivative filter 
+        // Vector3f _accel_meas = compute_angular_accel(_rate_gyro);
+
+        // _accel_roll_meas= _accel_meas.x; 
+        // _accel_pitch_meas = _accel_meas.y; 
+
+        // _max_roll_torque = MAX(_max_roll_torque,_accel_roll_meas);
+        // _max_pitch_torque = MAX(_max_pitch_torque,_accel_pitch_meas);
+
+        // hal.console->printf("\n Max Roll Accel measured:%0.5f, Max Pitch Accel measured:%0.5f ",_max_roll_torque,_max_pitch_torque);
+        
+
+        float roll_torque_meas, pitch_torque_meas, yaw_torque_meas;
+        _motors.get_torques_measured(roll_torque_meas, pitch_torque_meas, yaw_torque_meas);
+        
+        
+        //float rotational_drag_x = 0.01*gyro.x + 0.02*gyro.x*abs(gyro.x);
+        //float rotational_drag_y = 0.01*gyro.y + 0.02*gyro.y*abs(gyro.y);
+        _roll_torque_meas  = roll_torque_meas ; // estimte on rotational drag
+        _pitch_torque_meas = pitch_torque_meas;
+
+        const float kp_roll  = 0.5f;
+        const float kp_pitch = 0.5f;
+
+        
+        
+
+        _accel_roll_output =  _pid_accel_roll.update_total(roll_torque_meas,  _accel_roll_target,  _accel_roll_meas,  dt_100hz, kp_roll,  _motors.limit.roll,  _pd_scale.x);
+        
+        _accel_pitch_output =  _pid_accel_pitch.update_total(pitch_torque_meas, _accel_pitch_target, _accel_pitch_meas, dt_100hz, kp_pitch, _motors.limit.pitch, _pd_scale.y);
+        
+        hal.console->printf("\n Roll Target:%0.5f, Pitch Target:%0.5f ",roll_out,pitch_out);
+        hal.console->printf("\n Roll Torque Out :%0.5f, Pitch Torque Out:%0.5f ",_accel_roll_output,_accel_pitch_output);
+    
+        
+        _accel_roll_output  = constrain_float(_accel_roll_output,-1.0f, 1.0f);
+        _accel_pitch_output = constrain_float(_accel_pitch_output,-1.0f, 1.0f);
+        
+
+        if (_use_accel_output) {
+            
+            
+           
+            roll_out  = _accel_roll_output;
+            pitch_out = _accel_pitch_output;
+
+
+
+        }
+    } else {
+        _accel_roll_target  = 0.0f;
+        _accel_pitch_target = 0.0f;
+        _accel_roll_output  = 0.0f;
+        _accel_pitch_output = 0.0f;
+        _pid_accel_roll.reset_I();
+        _pid_accel_pitch.reset_I();
+    }
+       
+
+// Set motor outputs
+    _motors.set_roll(roll_out);
     _motors.set_roll_ff(get_rate_roll_pid().get_ff());
 
-    _motors.set_pitch(get_rate_pitch_pid().update_all(ang_vel_body.y, gyro.y,  dt, _motors.limit.pitch, _pd_scale.y) + _actuator_sysid.y);
+    _motors.set_pitch(pitch_out);
     _motors.set_pitch_ff(get_rate_pitch_pid().get_ff());
 
-    _motors.set_yaw(get_rate_yaw_pid().update_all(ang_vel_body.z, gyro.z,  dt, _motors.limit.yaw, _pd_scale.z) + _actuator_sysid.z);
+    _motors.set_yaw(yaw_out);
     _motors.set_yaw_ff(get_rate_yaw_pid().get_ff()*_feedforward_scalar);
 
     _pd_scale_used = _pd_scale;

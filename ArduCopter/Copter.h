@@ -874,6 +874,7 @@ private:
     uint8_t get_num_log_structures() const override;
 
     // Log.cpp
+    //void Log_Write_Accel_Loop(); // Ian // added for logging angular accel from IMU
     void Log_Write_Control_Tuning();
     void Log_Write_Attitude();
     void Log_Write_EKF_POS();

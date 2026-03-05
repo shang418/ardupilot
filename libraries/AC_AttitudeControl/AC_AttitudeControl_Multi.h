@@ -5,6 +5,7 @@
 
 #include "AC_AttitudeControl.h"
 #include <AP_Motors/AP_MotorsMulticopter.h>
+#include <Filter/DerivativeFilter.h>
 
 // default rate controller PID gains
 #ifndef AC_ATC_MULTI_RATE_RP_P
@@ -86,6 +87,24 @@ public:
     // set the PID notch sample rates
     void set_notch_sample_rate(float sample_rate) override;
 
+     // enable/disable angular acceleration inner loop calculations
+    void set_accel_inner_loop_enabled(bool enabled) override { _accel_inner_loop_enabled = enabled; }
+    bool get_accel_inner_loop_enabled() const override { return _accel_inner_loop_enabled; }
+
+    // enable/disable using accel output for motor control (calculations still happen when disabled for logging)
+    void set_use_accel_output(bool use_output) override { _use_accel_output = use_output; }
+    bool get_use_accel_output() const override { return _use_accel_output; }
+
+    Vector3f compute_angular_accel(const Vector3f& gyro);
+
+    // get angular acceleration inner loop outputs for logging
+    float get_accel_roll_target() const override { return _accel_roll_target; }
+    float get_accel_pitch_target() const override { return _accel_pitch_target; }
+    float get_accel_roll_output() const override { return _accel_roll_output; }
+    float get_accel_pitch_output() const override { return _accel_pitch_output; }
+    float get_roll_torque_meas() const override { return _roll_torque_meas; }
+    float get_pitch_torque_meas() const override { return _pitch_torque_meas; }
+    
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -144,6 +163,35 @@ protected:
             .srtau     = 1.0
         }
     };
+    // Angular acceleration inner loop PID controllers
+    AC_PID                _pid_accel_roll{
+        AC_PID::Defaults{
+            .p         = 1.0f,
+            .i         = 0.4f,
+            .d         = 0.0f,
+            .ff        = 0.0f,
+            .imax      = 0.5f,
+            .filt_T_hz = 50.0f,   // no target filtering: ν passes straight through to the INDI error
+            .filt_E_hz = 0.0f,
+            .filt_D_hz = 0.0f,
+            .srmax     = 0,
+            .srtau     = 1.0
+        }
+    };
+    AC_PID                _pid_accel_pitch{
+        AC_PID::Defaults{
+            .p         = 1.0f,
+            .i         = 0.4f,
+            .d         = 0.0f,
+            .ff        = 0.0f,
+            .imax      = 0.5f,
+            .filt_T_hz = 50.0f,   // no target filtering: ν passes straight through to the INDI error
+            .filt_E_hz = 0.0f,
+            .filt_D_hz = 0.0f,
+            .srmax     = 0,
+            .srtau     = 1.0
+        }
+    };
 
     AP_Float              _thr_mix_man;     // throttle vs attitude control prioritisation used when using manual throttle (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_min;     // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
@@ -151,4 +199,24 @@ protected:
 
     // angle_p/pd boost multiplier
     AP_Float              _throttle_gain_boost;
+
+      // Angular acceleration inner loop state
+    bool                  _accel_inner_loop_enabled{false};   // enable calculations (for logging)
+    bool                  _use_accel_output{false};           // use accel output for motor control
+    //AccelSource           _accel_source{AccelSource::IMU};    // source of angular acceleration measurement (set in Attitude.cpp)
+    float                 _accel_roll_target{0.0f};           // target roll angular acceleration from outer loop
+    float                 _accel_pitch_target{0.0f};          // target pitch angular acceleration from outer loop
+    float                 _accel_roll_output{0.0f};           // roll correction from accel inner loop
+    float                 _accel_pitch_output{0.0f};          // pitch correction from accel inner loop
+    float                 _max_roll_torque{0.0f};           // roll correction from accel inner loop
+    float                 _max_pitch_torque{0.0f};          // pitch correction from accel inner loop
+    float                 _accel_roll_meas{0.0f};             // measured roll angular acceleration (rad/s^2, from strain/IMU via set_accel_measurement)
+    float                 _accel_pitch_meas{0.0f};            // measured pitch angular acceleration (rad/s^2, from strain/IMU via set_accel_measurement)
+    uint32_t              _accel_last_update_ms{0};           // timestamp of last external accel data update (strain/IMU)
+    float                 _roll_torque_meas{0.0f};            // measured roll torque from motors (last inner loop update)
+    float                 _pitch_torque_meas{0.0f};           // measured pitch torque from motors (last inner loop update)
+
+        // Derivative filters for P and Q axes (Holoborodko smooth differentiator)
+    DerivativeFilterFloat_Size5 _deriv_filter_x;
+    DerivativeFilterFloat_Size5 _deriv_filter_y;
 };
