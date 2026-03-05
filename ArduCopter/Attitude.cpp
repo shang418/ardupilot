@@ -25,7 +25,7 @@ void Copter::run_rate_controller()
 
     bool enable_accel_loop = false;
     const Mode::Number mode_num = flightmode->mode_number();
-    if (mode_num == Mode::Number::SPORT){
+    if (mode_num == Mode::Number::ALT_HOLD){
         enable_accel_loop = true;
         }
     
