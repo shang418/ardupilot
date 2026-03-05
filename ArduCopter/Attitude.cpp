@@ -38,21 +38,29 @@ void Copter::run_rate_controller()
     // Set to false by default for safety - allows validating controller output via logs before using for flight
     attitude_control->set_use_accel_output(enable_accel_loop);
 
-    // if (!using_rate_thread) {
-    //     // Rate controller runs at 100Hz so that rate-PID and INDI modes are compared
-    //     // at the same update rate (INDI is limited to 100Hz by the angular accel sensor).
-    //     // The main scheduler calls this function at 400Hz; every 4th call is passed through.
-    //     static uint8_t rate_div_count = 0;
-    //     if (++rate_div_count >= 4) {
-    //         rate_div_count = 0;
-    //         constexpr float dt_100hz = 0.01f;
-    //         motors->set_dt(dt_100hz);
-    //         attitude_control->rate_controller_run();
-    //     }
-    // }
+    if (!using_rate_thread) {
+        // Motors need dt every iteration for throttle filter bookkeeping.
+        motors->set_dt(last_loop_time_s);
 
+        // Run the rate controller at 100Hz so that the PID rate controller and the
+        // angular-acceleration (INDI) controller are compared at the same update rate.
+        // The INDI controller is limited to 100Hz by the angular acceleration sensor.
+        // The main FAST_TASK runs at 400Hz; we accumulate actual elapsed time and fire
+        // when ~10ms has passed, using the real accumulated dt rather than a hardcoded value.
+        // After the run we restore attitude_control's dt to the per-loop value so that
+        // update_flight_mode() (which runs later in the same FAST_TASK list) sees the
+        // correct 400Hz dt for its outer-loop attitude computations.
+        static float rate_ctrl_dt_accum_s = 0.0f;
+        rate_ctrl_dt_accum_s += last_loop_time_s;
+        if (rate_ctrl_dt_accum_s >= 0.01f) {
+            attitude_control->set_dt(rate_ctrl_dt_accum_s);
+            attitude_control->rate_controller_run();
+            attitude_control->set_dt(last_loop_time_s);  // restore for update_flight_mode outer loop
+            rate_ctrl_dt_accum_s = 0.0f;
+        }
+    }
     // run low level rate controllers that only require IMU data
-    attitude_control->rate_controller_run();
+    //attitude_control->rate_controller_run();
     // reset sysid and other temporary inputs
     attitude_control->rate_controller_target_reset();
 }

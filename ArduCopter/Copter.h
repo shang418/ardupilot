@@ -1081,6 +1081,8 @@ private:
     Mode *mode_from_mode_num(const Mode::Number mode);
     void exit_mode(Mode *&old_flightmode, Mode *&new_flightmode);
 
+    bool started_rate_thread;
+    bool using_rate_thread;
 public:
     void failsafe_check();      // failsafe.cpp
 };
