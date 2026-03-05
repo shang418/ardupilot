@@ -489,7 +489,7 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
 
 
     
-    hal.console->printf("\n Accel Enabled: %d,  Roll Accel measured:%0.5f, Pitch Accel measured:%0.5f ",_accel_inner_loop_enabled,_accel_roll_meas,_accel_pitch_meas);
+    //hal.console->printf("\n Accel Enabled: %d,  Roll Accel measured:%0.5f, Pitch Accel measured:%0.5f ",_accel_inner_loop_enabled,_accel_roll_meas,_accel_pitch_meas);
    
     if (_accel_inner_loop_enabled) {
 
