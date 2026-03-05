@@ -479,7 +479,7 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
     // Attitude.cpp — independent of the scheduler's 400Hz tick.  All integrators
     // and filter coefficients (e.g. motor dynamics α=0.98 → τ=500ms) are correct
     // at this rate.
-    const float dt_100hz = 0.01f; // this is dt for now.....Ask Ian about 100 Hz in Attitude.cpp
+    const float dt_100hz = dt; // this is dt for now.....Ask Ian about 100 Hz in Attitude.cpp
 
     // Rate PIDs at 100Hz
     float roll_out  = get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt_100hz, _motors.limit.roll,  _pd_scale.x) + _actuator_sysid.x;
@@ -489,15 +489,15 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro, floa
 
 
     
-    //hal.console->printf("\n Accel Enabled: %d,  Roll Accel measured:%0.5f, Pitch Accel measured:%0.5f ",_accel_inner_loop_enabled,_accel_roll_meas,_accel_pitch_meas);
+    hal.console->printf("\n Accel Enabled: %d,  Roll Accel measured:%0.5f, Pitch Accel measured:%0.5f ",_accel_inner_loop_enabled,_accel_roll_meas,_accel_pitch_meas);
    
     if (_accel_inner_loop_enabled) {
 
         // get acceleration measurements here from IMU derivative filter 
         Vector3f _accel_meas = compute_angular_accel(_rate_gyro);
 
-        _accel_roll_meas= _accel_meas.x*0.01; 
-        _accel_pitch_meas = _accel_meas.y*0.01; 
+        _accel_roll_meas= _accel_meas.x*0.01f; 
+        _accel_pitch_meas = _accel_meas.y*0.01f; 
        
         // Rate PIDs at 100Hz
         _accel_roll_target  = get_rate_roll_pid().update_all(ang_vel_body.x, gyro.x,  dt_100hz, _motors.limit.roll,  3.14f) ;

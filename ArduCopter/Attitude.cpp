@@ -37,30 +37,30 @@ void Copter::run_rate_controller()
     // Control whether to use accel output for motors (false = calculate but don't use, true = use for control)
     // Set to false by default for safety - allows validating controller output via logs before using for flight
     attitude_control->set_use_accel_output(enable_accel_loop);
+    
+    // if (!using_rate_thread) {
+    //     // Motors need dt every iteration for throttle filter bookkeeping.
+    //     motors->set_dt(last_loop_time_s);
 
-    if (!using_rate_thread) {
-        // Motors need dt every iteration for throttle filter bookkeeping.
-        motors->set_dt(last_loop_time_s);
-
-        // Run the rate controller at 100Hz so that the PID rate controller and the
-        // angular-acceleration (INDI) controller are compared at the same update rate.
-        // The INDI controller is limited to 100Hz by the angular acceleration sensor.
-        // The main FAST_TASK runs at 400Hz; we accumulate actual elapsed time and fire
-        // when ~10ms has passed, using the real accumulated dt rather than a hardcoded value.
-        // After the run we restore attitude_control's dt to the per-loop value so that
-        // update_flight_mode() (which runs later in the same FAST_TASK list) sees the
-        // correct 400Hz dt for its outer-loop attitude computations.
-        static float rate_ctrl_dt_accum_s = 0.0f;
-        rate_ctrl_dt_accum_s += last_loop_time_s;
-        if (rate_ctrl_dt_accum_s >= 0.01f) {
-            attitude_control->set_dt(rate_ctrl_dt_accum_s);
-            attitude_control->rate_controller_run();
-            attitude_control->set_dt(last_loop_time_s);  // restore for update_flight_mode outer loop
-            rate_ctrl_dt_accum_s = 0.0f;
-        }
-    }
+    //     // Run the rate controller at 100Hz so that the PID rate controller and the
+    //     // angular-acceleration (INDI) controller are compared at the same update rate.
+    //     // The INDI controller is limited to 100Hz by the angular acceleration sensor.
+    //     // The main FAST_TASK runs at 400Hz; we accumulate actual elapsed time and fire
+    //     // when ~10ms has passed, using the real accumulated dt rather than a hardcoded value.
+    //     // After the run we restore attitude_control's dt to the per-loop value so that
+    //     // update_flight_mode() (which runs later in the same FAST_TASK list) sees the
+    //     // correct 400Hz dt for its outer-loop attitude computations.
+    //     static float rate_ctrl_dt_accum_s = 0.0f;
+    //     rate_ctrl_dt_accum_s += last_loop_time_s;
+    //     if (rate_ctrl_dt_accum_s >= 0.01f) {
+    //         attitude_control->set_dt(rate_ctrl_dt_accum_s);
+    //         attitude_control->rate_controller_run();
+    //         attitude_control->set_dt(last_loop_time_s);  // restore for update_flight_mode outer loop
+    //         rate_ctrl_dt_accum_s = 0.0f;
+    //     }
+    // }
     // run low level rate controllers that only require IMU data
-    //attitude_control->rate_controller_run();
+    attitude_control->rate_controller_run();
     // reset sysid and other temporary inputs
     attitude_control->rate_controller_target_reset();
 }
